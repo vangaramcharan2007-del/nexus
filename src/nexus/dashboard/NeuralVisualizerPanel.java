@@ -12,23 +12,74 @@ import nexus.common.EventBus;
 import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
 
+/**
+ * The NeuralVisualizerPanel is a custom graphical component that provides a futuristic, 
+ * node-based representation of the application's internal state.
+ * 
+ * It visually displays the core modules (Dashboard, Finance, Tasks, etc.) as connected nodes.
+ * By implementing NexusListener, it can react to global events (like budget changes) 
+ * and animate particles flowing between nodes to represent data movement.
+ */
 public class NeuralVisualizerPanel extends JPanel implements NexusListener {
     private String[] nodeNames = {"Finance", "Market", "Tasks", "Goals", "Media", "Analytics"};
     private Map<String, Point> nodeCenters = new HashMap<>();
     private List<Particle> particles = new ArrayList<>();
     private Timer timer;
+    private Color centerColor = Color.CYAN;
+    private float pulsePhase = 0.0f;
+    private boolean budgetExceeded = false;
+    private int currentScore = 100;
 
     public NeuralVisualizerPanel() {
         setBackground(new Color(20, 20, 20));
         EventBus.getInstance().subscribeToAll(this); // Assuming subscribeToAll exists, wait...
         
-        timer = new Timer(16, e -> {
+                timer = new Timer(16, e -> {
             updateParticles();
             repaint();
         });
         timer.start();
+
+        addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                int mx = e.getX();
+                int my = e.getY();
+                for (String node : nodeNames) {
+                    Point p = nodeCenters.get(node);
+                    if (p != null) {
+                        double dist = Math.hypot(mx - p.x, my - p.y);
+                        if (dist <= 25) {
+                            EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", node, "Dashboard"));
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        
+        addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent e) {
+                int mx = e.getX();
+                int my = e.getY();
+                boolean overNode = false;
+                for (String node : nodeNames) {
+                    Point p = nodeCenters.get(node);
+                    if (p != null && Math.hypot(mx - p.x, my - p.y) <= 25) {
+                        overNode = true;
+                        break;
+                    }
+                }
+                setCursor(new Cursor(overNode ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+            }
+        });
     }
 
+    /**
+     * This method is the heart of the custom graphics. It is called repeatedly by the Swing framework
+     * (triggered by our Timer) to redraw the screen frame-by-frame, creating a smooth animation.
+     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -39,20 +90,33 @@ public class NeuralVisualizerPanel extends JPanel implements NexusListener {
         int cy = getHeight() / 2;
         int radius = Math.min(cx, cy) - 40;
 
-        // Draw connections
+        // Step 1: Draw lines connecting all nodes to each other, creating a 'web' effect.
+        // We use a semi-transparent cyan color (alpha = 30) for a subtle tech look.
         g2.setColor(new Color(0, 255, 255, 30));
         for (int i = 0; i < nodeNames.length; i++) {
             for (int j = i + 1; j < nodeNames.length; j++) {
                 Point p1 = getPoint(i, cx, cy, radius);
                 Point p2 = getPoint(j, cx, cy, radius);
-                g2.drawLine(p1.x, p1.y, p2.x, p2.y);
+                g2.drawLine(p1.x, p1.y, p2.x, p2.y); // Draw line between two peripheral nodes
             }
             Point p = getPoint(i, cx, cy, radius);
-            g2.drawLine(cx, cy, p.x, p.y);
+            g2.drawLine(cx, cy, p.x, p.y); // Draw line from center to the peripheral node
         }
 
-        // Draw center node
-        g2.setColor(Color.WHITE);
+        // Step 2: Calculate the glowing effect of the central core.
+        // Math.sin creates a smooth oscillation between -1 and 1.
+        // By mapping this to our alpha (transparency) channel, we get a breathing/pulsing effect.
+        pulsePhase += 0.05f;
+        int pulseAlpha = (int) (155 + 100 * Math.sin(pulsePhase));
+        if(pulseAlpha < 0) pulseAlpha = 0;
+        if(pulseAlpha > 255) pulseAlpha = 255;
+
+        // Draw ambient glow
+        g2.setColor(new Color(centerColor.getRed(), centerColor.getGreen(), centerColor.getBlue(), pulseAlpha / 3));
+        g2.fillOval(cx - 30, cy - 30, 60, 60);
+
+        // Draw center core
+        g2.setColor(new Color(centerColor.getRed(), centerColor.getGreen(), centerColor.getBlue(), pulseAlpha));
         g2.fillOval(cx - 15, cy - 15, 30, 30);
         
         // Draw nodes
@@ -96,6 +160,15 @@ public class NeuralVisualizerPanel extends JPanel implements NexusListener {
 
     @Override
     public void onEvent(NexusEvent event) {
+        if ("BUDGET_UPDATED".equals(event.getType())) {
+            nexus.finance.Budget budget = (nexus.finance.Budget) event.getPayload();
+            budgetExceeded = budget.getRemaining() < 0;
+            updateCenterColor();
+        } else if ("SCORE_UPDATED".equals(event.getType())) {
+            currentScore = (Integer) event.getPayload();
+            updateCenterColor();
+        }
+
         String sourceStr = event.getSource();
         if (sourceStr == null) return;
         Point startNode = nodeCenters.get(sourceStr);
@@ -109,6 +182,16 @@ public class NeuralVisualizerPanel extends JPanel implements NexusListener {
                     particles.add(new Particle(startNode.x, startNode.y, targetNode.x, targetNode.y));
                 }
             }
+        }
+    }
+
+    private void updateCenterColor() {
+        if (budgetExceeded) {
+            centerColor = Color.RED;
+        } else if (currentScore >= 150) {
+            centerColor = Color.GREEN;
+        } else {
+            centerColor = Color.CYAN;
         }
     }
 
@@ -141,3 +224,4 @@ public class NeuralVisualizerPanel extends JPanel implements NexusListener {
         }
     }
 }
+

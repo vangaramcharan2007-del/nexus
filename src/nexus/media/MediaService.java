@@ -5,6 +5,16 @@ import nexus.common.NexusEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The MediaService acts as the 'Controller' or 'Business Logic' layer for its respective module.
+ * 
+ * In a professional software architecture (like MVC or MVVM), Services are responsible for:
+ * 1. Managing data state (holding the lists of items, scores, or configurations).
+ * 2. Processing business rules (e.g., verifying if an action is valid).
+ * 3. Communicating with other parts of the application (publishing events to the EventBus).
+ * 
+ * By keeping this logic out of the GUI Panels, the code remains easy to test, maintain, and extend.
+ */
 public class MediaService {
     private List<MediaItem> mediaItems;
     

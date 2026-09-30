@@ -6,6 +6,16 @@ import nexus.common.NexusListener;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * The FinanceService acts as the 'Controller' or 'Business Logic' layer for its respective module.
+ * 
+ * In a professional software architecture (like MVC or MVVM), Services are responsible for:
+ * 1. Managing data state (holding the lists of items, scores, or configurations).
+ * 2. Processing business rules (e.g., verifying if an action is valid).
+ * 3. Communicating with other parts of the application (publishing events to the EventBus).
+ * 
+ * By keeping this logic out of the GUI Panels, the code remains easy to test, maintain, and extend.
+ */
 public class FinanceService implements NexusListener {
     private Budget budget;
     private List<Transaction> transactions;
@@ -34,4 +44,9 @@ public class FinanceService implements NexusListener {
     
     public Budget getBudget() { return budget; }
     public List<Transaction> getTransactions() { return transactions; }
+    
+    public void setTransactions(List<Transaction> loadedTransactions) {
+        this.transactions = loadedTransactions;
+        EventBus.getInstance().publish(new NexusEvent("TRANSACTIONS_UPDATED", transactions, "Finance"));
+    }
 }

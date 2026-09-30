@@ -15,6 +15,13 @@ public class Transaction {
         this.amount = amount;
         this.date = new Date();
     }
+
+    public Transaction(String id, String description, double amount, Date date) {
+        this.id = id;
+        this.description = description;
+        this.amount = amount;
+        this.date = date;
+    }
     
     public String getId() { return id; }
     public String getDescription() { return description; }

@@ -14,6 +14,13 @@ public class Task {
         this.priority = priority;
         this.completed = false;
     }
+
+    public Task(String id, String title, TaskPriority priority, boolean completed) {
+        this.id = id;
+        this.title = title;
+        this.priority = priority;
+        this.completed = completed;
+    }
     
     public String getId() { return id; }
     public String getTitle() { return title; }
