@@ -41,7 +41,8 @@ public class NexusApplication extends JFrame {
         // Initialize Tray Manager
         new nexus.common.NexusTrayManager(this);
         
-        // Initialize Voice Engine
+        // Initialize Voice Engine & Sound Manager
+        new nexus.common.SoundManager();
         
         // Initialize DatabaseService early
         nexus.database.DatabaseService databaseService = new nexus.database.DatabaseService();
@@ -54,6 +55,15 @@ public class NexusApplication extends JFrame {
         GoalService goalService = new GoalService();
         MediaService mediaService = new MediaService();
         AnalyticsService analyticsService = new AnalyticsService();
+        
+        nexus.rules.RuleEngineService ruleEngine = new nexus.rules.RuleEngineService();
+        ruleEngine.addRule("TASK_COMPLETED", event -> {
+            // A custom IFTTT rule: Completing a task automatically gives a tiny budget bonus
+            financeService.addFunds("Task Completion Bonus", 5.0);
+        });
+        
+        nexus.realtime.WindowsMediaHook mediaHook = new nexus.realtime.WindowsMediaHook();
+        mediaHook.start();
         
         // Populate UI/Services with DB data
         java.util.List<nexus.tasks.Task> loadedTasks = databaseService.loadTasks();
@@ -77,6 +87,8 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("Goals", new GoalPanel(goalService));
         tabbedPane.addTab("Media", new MediaPanel(mediaService));
         tabbedPane.addTab("Analytics", new AnalyticsPanel(analyticsService));
+        tabbedPane.addTab("Rules", new nexus.rules.RulePanel(ruleEngine));
+        tabbedPane.addTab("V7 Enterprise", new nexus.startup.StartupDashboardPanel());
         
         // Setup CardLayout
         CardLayout cardLayout = new CardLayout();
@@ -86,13 +98,42 @@ public class NexusApplication extends JFrame {
             cardLayout.show(mainContent, "MainApp");
         });
         
+        // Add Activity Feed
+        JPanel mainAppContainer = new JPanel(new BorderLayout());
+        mainAppContainer.add(tabbedPane, BorderLayout.CENTER);
+        mainAppContainer.add(new nexus.common.ActivityFeedPanel(), BorderLayout.EAST);
+        
+        // God Mode Terminal
+        JTextField godModeTerminal = new JTextField();
+        godModeTerminal.setToolTipText("God Mode Terminal: /budget <amount> or /score <amount>");
+        godModeTerminal.setBackground(new Color(20, 20, 20));
+        godModeTerminal.setForeground(new Color(0, 255, 0));
+        godModeTerminal.setCaretColor(new Color(0, 255, 0));
+        godModeTerminal.setFont(new Font("Monospaced", Font.BOLD, 14));
+        godModeTerminal.addActionListener(e -> {
+            String cmd = godModeTerminal.getText().trim();
+            godModeTerminal.setText("");
+            if (cmd.startsWith("/budget ")) {
+                try {
+                    double amount = Double.parseDouble(cmd.substring(8).trim());
+                    nexus.common.EventBus.getInstance().publish(new nexus.common.NexusEvent("GOD_MODE_BUDGET", amount, "GodMode"));
+                } catch (NumberFormatException ex) {}
+            } else if (cmd.startsWith("/score ")) {
+                try {
+                    int score = Integer.parseInt(cmd.substring(7).trim());
+                    nexus.common.EventBus.getInstance().publish(new nexus.common.NexusEvent("GOD_MODE_SCORE", score, "GodMode"));
+                } catch (NumberFormatException ex) {}
+            }
+        });
+        mainAppContainer.add(godModeTerminal, BorderLayout.SOUTH);
+        
         mainContent.add(loginPanel, "Login");
-        mainContent.add(tabbedPane, "MainApp");
+        mainContent.add(mainAppContainer, "MainApp");
         
         setLayout(new BorderLayout());
         add(mainContent, BorderLayout.CENTER);
         
-                // Show Login panel initially
+        // Show Login panel initially
         cardLayout.show(mainContent, "Login");
         
         nexus.common.EventBus.getInstance().subscribeToAll(new nexus.common.NexusListener() {
