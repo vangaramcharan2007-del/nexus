@@ -32,7 +32,7 @@ public class WebMarketScraper {
             Matcher imageMatcher = imagePattern.matcher(json);
 
             int count = 0;
-            while (titleMatcher.find() && priceMatcher.find() && categoryMatcher.find() && imageMatcher.find() && count < 10) {
+            while (titleMatcher.find() && priceMatcher.find() && categoryMatcher.find() && imageMatcher.find()) {
                 String title = titleMatcher.group(1);
                 double price = Double.parseDouble(priceMatcher.group(1));
                 String category = categoryMatcher.group(1);
