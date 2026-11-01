@@ -122,13 +122,16 @@ public class DatabaseService implements NexusListener {
                              "promo_code TEXT, " +
                              "final_total REAL, " +
                              "booking_date INTEGER, " +
-                             "status TEXT)");
+                             "status TEXT, " +
+                             "payment_method TEXT)");
 
                 // 7. Market Purchases
                 stmt.execute("CREATE TABLE IF NOT EXISTS market_purchases (" +
                              "id TEXT PRIMARY KEY, " +
                              "product_name TEXT, " +
                              "price REAL, " +
+                             "delivery_address TEXT, " +
+                             "payment_method TEXT, " +
                              "timestamp INTEGER)");
             }
 
@@ -138,6 +141,9 @@ public class DatabaseService implements NexusListener {
             safelyExecute("ALTER TABLE transactions ADD COLUMN category TEXT");
             safelyExecute("ALTER TABLE goals ADD COLUMN deadline TEXT");
             safelyExecute("ALTER TABLE goals ADD COLUMN category TEXT");
+            safelyExecute("ALTER TABLE cinema_bookings ADD COLUMN payment_method TEXT");
+            safelyExecute("ALTER TABLE market_purchases ADD COLUMN delivery_address TEXT");
+            safelyExecute("ALTER TABLE market_purchases ADD COLUMN payment_method TEXT");
 
         } catch (Exception e) {
             System.err.println("[DatabaseService] Init error: " + e.getMessage());
@@ -289,12 +295,17 @@ public class DatabaseService implements NexusListener {
 
     public List<CinemaBooking> loadBookings() {
         List<CinemaBooking> list = new ArrayList<>();
-        String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status FROM cinema_bookings ORDER BY booking_date DESC";
+        String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method FROM cinema_bookings ORDER BY booking_date DESC";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String seatsRaw = rs.getString("seats");
                 List<String> seatsList = seatsRaw != null ? Arrays.asList(seatsRaw.split(",\\s*")) : new ArrayList<>();
+                String payMethod = "NEXUS Capital Wallet";
+                try {
+                    payMethod = rs.getString("payment_method");
+                    if (payMethod == null || payMethod.isEmpty()) payMethod = "NEXUS Capital Wallet";
+                } catch (Exception ignored) {}
 
                 list.add(new CinemaBooking(
                     rs.getString("id"),
@@ -307,7 +318,8 @@ public class DatabaseService implements NexusListener {
                     rs.getString("promo_code"),
                     rs.getDouble("final_total"),
                     new Date(rs.getLong("booking_date")),
-                    rs.getString("status")
+                    rs.getString("status"),
+                    payMethod
                 ));
             }
         } catch (SQLException e) {
@@ -372,7 +384,7 @@ public class DatabaseService implements NexusListener {
                 // CINEMA BOOKING EVENTS
                 else if ("TICKET_BOOKED".equals(type) && payload instanceof CinemaBooking) {
                     CinemaBooking b = (CinemaBooking) payload;
-                    String sql = "INSERT OR REPLACE INTO cinema_bookings(id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    String sql = "INSERT OR REPLACE INTO cinema_bookings(id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                     try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
                         pstmt.setString(1, b.getId());
                         pstmt.setString(2, b.getMovieTitle());
@@ -385,6 +397,7 @@ public class DatabaseService implements NexusListener {
                         pstmt.setDouble(9, b.getFinalTotal());
                         pstmt.setLong(10, b.getBookingDate().getTime());
                         pstmt.setString(11, b.getStatus());
+                        pstmt.setString(12, b.getPaymentMethod());
                         pstmt.executeUpdate();
                     }
                 }

@@ -116,7 +116,12 @@ public class MediaService implements NexusListener {
 
     public CinemaBooking createBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                                        double basePrice, double discount, String promoCode, double finalTotal) {
-        CinemaBooking booking = new CinemaBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal);
+        return createBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
+    }
+
+    public CinemaBooking createBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
+                                       double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
+        CinemaBooking booking = new CinemaBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, paymentMethod);
         bookings.add(0, booking);
 
         // Notify EventBus
@@ -130,9 +135,10 @@ public class MediaService implements NexusListener {
         if (code == null) return 0.0;
         String clean = code.trim().toUpperCase();
         return switch (clean) {
-            case "SRMSTUDENT" -> subtotal * 0.25; // 25% student discount
-            case "NEXUS50" -> Math.min(50.0, subtotal * 0.50); // $50 flat
+            case "SRMSTUDENT" -> subtotal * 0.25; // 25% student concession
+            case "NEXUS50" -> Math.min(50.0, subtotal * 0.50); // $50 flat rebate
             case "FIRSTSHOW" -> subtotal * 0.15; // 15% discount
+            case "WEEKEND" -> subtotal * 0.10; // 10% weekend binge
             case "SPECIAL10" -> subtotal * 0.10;
             default -> 0.0;
         };

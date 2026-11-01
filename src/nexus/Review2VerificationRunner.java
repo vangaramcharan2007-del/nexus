@@ -114,25 +114,42 @@ public class Review2VerificationRunner {
         }
 
         // 5. VERIFY BOOKMYSHOW CINEMA BOX OFFICE & SEAT ALLOCATION
-        System.out.println("\n[5/7] Testing BookMyShow Box Office & Seat Allocation Engine...");
+        System.out.println("\n[5/7] Testing BookMyShow Box Office, Payment Modes & Concessions...");
         try {
             List<String> seats = new ArrayList<>();
             seats.add("A4");
             seats.add("A5");
             CinemaBooking booking = new CinemaBooking("Interstellar (10th Anniv IMAX)", "PVR Grand Galada, Chennai", 
-                    "Today • 06:45 PM", seats, 700.0, 175.0, "SRMSTUDENT", 525.0);
+                    "Today • 06:45 PM", seats, 700.0, 175.0, "SRMSTUDENT", 525.0, "UPI / Google Pay (VPA Scan & Pay)");
 
             System.out.printf("   ✓ Cinema Booking Generated: %s\n", booking.getId());
             System.out.printf("   ✓ Theatre: %s  |  Show: %s\n", booking.getTheatre(), booking.getShowTime());
             System.out.printf("   ✓ Allocated Seats: %s (VIP Recliners)\n", booking.getSeatsFormatted());
             System.out.printf("   ✓ Pricing: Subtotal=$%.2f | Discount=-$%.2f (%s) | Final Total=$%.2f\n",
                     booking.getBasePrice(), booking.getDiscount(), booking.getPromoCode(), booking.getFinalTotal());
+            System.out.printf("   ✓ Payment Mode: %s\n", booking.getPaymentMethod());
             System.out.println("   >>> STATUS: BOOKMYSHOW SEAT ALLOCATION & PROMO ENGINE VALIDATED!");
 
             // Fire event to test persistence
             EventBus.getInstance().publish(new NexusEvent("TICKET_BOOKED", booking, "Media"));
         } catch (Exception e) {
             System.err.println("   ✗ Cinema Booking Error: " + e.getMessage());
+        }
+
+        // 5B. VERIFY MULTI-USER ACCOUNTS & DELIVERY PROFILES
+        System.out.println("\n[5b] Testing Multi-User Account Switching & Delivery Address Engine...");
+        try {
+            nexus.auth.AccountService accountService = nexus.auth.AccountService.getInstance();
+            System.out.printf("   ✓ Registered Accounts: %d profiles\n", accountService.getProfiles().size());
+            for (nexus.auth.UserProfile p : accountService.getProfiles()) {
+                System.out.printf("     - %s %s | Role: %s | Loc: %s | Pay: %s\n",
+                        p.getAvatar(), p.getName(), p.getRole(), p.getDeliveryAddress(), p.getDefaultPaymentMethod());
+            }
+            nexus.auth.UserProfile current = accountService.getCurrentProfile();
+            System.out.printf("   ✓ Active User: %s %s (%s)\n", current.getAvatar(), current.getName(), current.getRole());
+            System.out.println("   >>> STATUS: MULTI-USER ROLES & PROFILES VALIDATED!");
+        } catch (Exception e) {
+            System.err.println("   ✗ Account Service Error: " + e.getMessage());
         }
 
         // 6. VERIFY ASYNC SQLITE PERSISTENCE

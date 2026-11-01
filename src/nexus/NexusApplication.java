@@ -112,8 +112,9 @@ public class NexusApplication extends JFrame {
             cardLayout.show(mainContent, "MainApp");
         });
         
-        // Main Container with Activity Feed
+        // Main Container with Activity Feed & Top Account Header Bar
         JPanel mainAppContainer = new JPanel(new BorderLayout());
+        mainAppContainer.add(createAccountHeaderBar(), BorderLayout.NORTH);
         mainAppContainer.add(tabbedPane, BorderLayout.CENTER);
         mainAppContainer.add(new nexus.common.ActivityFeedPanel(), BorderLayout.EAST);
         
@@ -164,5 +165,100 @@ public class NexusApplication extends JFrame {
                 }
             }
         });
+    }
+
+    private JPanel createAccountHeaderBar() {
+        JPanel bar = new JPanel(new BorderLayout(12, 0));
+        bar.setBackground(new Color(15, 23, 42));
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(51, 65, 85)),
+                BorderFactory.createEmptyBorder(6, 16, 6, 16)
+        ));
+
+        // Left Branding & Active User Card
+        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        leftPanel.setOpaque(false);
+
+        JLabel brand = new JLabel("⚡ NEXUS 7.0");
+        brand.setFont(new Font("Consolas", Font.BOLD, 15));
+        brand.setForeground(new Color(0, 255, 255));
+
+        JLabel sep = new JLabel(" | ");
+        sep.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        sep.setForeground(new Color(71, 85, 105));
+
+        nexus.auth.UserProfile current = nexus.auth.AccountService.getInstance().getCurrentProfile();
+        JLabel userAvatar = new JLabel(current != null ? current.getAvatar() : "👨‍💻");
+        userAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+
+        JLabel userName = new JLabel(current != null ? current.getName() : "Ram Charan Vanga");
+        userName.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        userName.setForeground(Color.WHITE);
+
+        JLabel userRole = new JLabel(current != null ? "(" + current.getRole() + ")" : "");
+        userRole.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        userRole.setForeground(new Color(148, 163, 184));
+
+        JLabel tierChip = new JLabel(current != null ? " " + current.getTier() + " " : "");
+        tierChip.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        tierChip.setOpaque(true);
+        tierChip.setBackground(new Color(30, 58, 138));
+        tierChip.setForeground(new Color(147, 197, 253));
+        tierChip.setBorder(BorderFactory.createLineBorder(new Color(59, 130, 246), 1));
+
+        leftPanel.add(brand);
+        leftPanel.add(sep);
+        leftPanel.add(userAvatar);
+        leftPanel.add(userName);
+        leftPanel.add(userRole);
+        leftPanel.add(tierChip);
+
+        // Right Quick Profile Switcher Dropdown
+        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        rightPanel.setOpaque(false);
+
+        JLabel switchLabel = new JLabel("Switch Account:");
+        switchLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        switchLabel.setForeground(new Color(148, 163, 184));
+
+        JComboBox<nexus.auth.UserProfile> profileCombo = new JComboBox<>(
+                nexus.auth.AccountService.getInstance().getProfiles().toArray(new nexus.auth.UserProfile[0]));
+        profileCombo.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        profileCombo.setBackground(new Color(30, 41, 59));
+        profileCombo.setForeground(Color.WHITE);
+        profileCombo.setPreferredSize(new Dimension(240, 28));
+
+        profileCombo.addActionListener(e -> {
+            nexus.auth.UserProfile sel = (nexus.auth.UserProfile) profileCombo.getSelectedItem();
+            if (sel != null) {
+                nexus.auth.AccountService.getInstance().switchProfile(sel);
+            }
+        });
+
+        // Listen for USER_SWITCHED to sync UI
+        nexus.common.EventBus.getInstance().subscribe("USER_SWITCHED", new nexus.common.NexusListener() {
+            @Override
+            public void onEvent(nexus.common.NexusEvent evt) {
+                SwingUtilities.invokeLater(() -> {
+                    nexus.auth.UserProfile p = (nexus.auth.UserProfile) evt.getPayload();
+                    if (p != null) {
+                        userAvatar.setText(p.getAvatar());
+                        userName.setText(p.getName());
+                        userRole.setText("(" + p.getRole() + ")");
+                        tierChip.setText(" " + p.getTier() + " ");
+                        if (profileCombo.getSelectedItem() != p) {
+                            profileCombo.setSelectedItem(p);
+                        }
+                    }
+                });
+            }
+        });
+
+        rightPanel.add(switchLabel);
+        rightPanel.add(profileCombo);
+
+        bar.add(leftPanel, BorderLayout.WEST);
+        bar.add(rightPanel, BorderLayout.EAST);
+        return bar;
     }
 }

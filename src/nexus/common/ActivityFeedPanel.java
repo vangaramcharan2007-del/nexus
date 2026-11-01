@@ -29,6 +29,8 @@ public class ActivityFeedPanel extends JPanel implements NexusListener {
         EventBus.getInstance().subscribe("MEDIA_COMPLETED", this);
         EventBus.getInstance().subscribe("MEDIA_ADDED", this);
         EventBus.getInstance().subscribe("INSIGHT_GENERATED", this);
+        EventBus.getInstance().subscribe("USER_SWITCHED", this);
+        EventBus.getInstance().subscribe("TICKET_BOOKED", this);
     }
 
     private void logEvent(String message) {
@@ -64,6 +66,12 @@ public class ActivityFeedPanel extends JPanel implements NexusListener {
                 nexus.analytics.Insight insight = (nexus.analytics.Insight) insights.get(insights.size() - 1);
                 logEvent("Insight: " + insight.getMessage());
             }
+        } else if ("USER_SWITCHED".equals(type)) {
+            nexus.auth.UserProfile p = (nexus.auth.UserProfile) event.getPayload();
+            logEvent("Active Profile: " + p.getAvatar() + " " + p.getName() + " (" + p.getRole() + ")");
+        } else if ("TICKET_BOOKED".equals(type)) {
+            nexus.media.CinemaBooking b = (nexus.media.CinemaBooking) event.getPayload();
+            logEvent("🎟️ Ticket Booked: " + b.getMovieTitle() + " Seats: " + b.getSeatsFormatted() + " Paid via: " + b.getPaymentMethod());
         }
     }
 }

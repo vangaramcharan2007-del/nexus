@@ -16,9 +16,15 @@ public class CinemaBooking {
     private double finalTotal;
     private Date bookingDate;
     private String status;
+    private String paymentMethod;
 
     public CinemaBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal) {
+        this(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
+    }
+
+    public CinemaBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
+                         double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
         this.id = "BMS-" + IdGenerator.generateId().substring(0, 8).toUpperCase();
         this.movieTitle = movieTitle;
         this.theatre = theatre;
@@ -30,10 +36,16 @@ public class CinemaBooking {
         this.finalTotal = finalTotal;
         this.bookingDate = new Date();
         this.status = "CONFIRMED";
+        this.paymentMethod = paymentMethod != null ? paymentMethod : "NEXUS Capital Wallet";
     }
 
     public CinemaBooking(String id, String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal, Date bookingDate, String status) {
+        this(id, movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, bookingDate, status, "NEXUS Capital Wallet");
+    }
+
+    public CinemaBooking(String id, String movieTitle, String theatre, String showTime, List<String> seatNumbers,
+                         double basePrice, double discount, String promoCode, double finalTotal, Date bookingDate, String status, String paymentMethod) {
         this.id = id;
         this.movieTitle = movieTitle;
         this.theatre = theatre;
@@ -45,6 +57,7 @@ public class CinemaBooking {
         this.finalTotal = finalTotal;
         this.bookingDate = bookingDate;
         this.status = status;
+        this.paymentMethod = paymentMethod != null ? paymentMethod : "NEXUS Capital Wallet";
     }
 
     public String getId() { return id; }
@@ -60,10 +73,11 @@ public class CinemaBooking {
     public Date getBookingDate() { return bookingDate; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getPaymentMethod() { return paymentMethod; }
 
     @Override
     public String toString() {
-        return String.format("[%s] %s @ %s (%s) - Seats: %s | Total: $%.2f",
-                id, movieTitle, theatre, showTime, getSeatsFormatted(), finalTotal);
+        return String.format("[%s] %s @ %s (%s) - Seats: %s | Paid via: %s | Total: $%.2f",
+                id, movieTitle, theatre, showTime, getSeatsFormatted(), paymentMethod, finalTotal);
     }
 }

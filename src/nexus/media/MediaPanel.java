@@ -27,8 +27,10 @@ public class MediaPanel extends JPanel implements NexusListener {
     private JLabel discountLabel;
     private JLabel totalPayableLabel;
     private JTextField promoCodeField;
+    private JComboBox<String> paymentMethodCombo;
+    private JLabel activeOfferLabel;
     private double currentDiscount = 0.0;
-    private String currentPromoCode = "";
+    private String currentPromoCode = "SRMSTUDENT";
 
     // Cinema Form Pickers & Poster Preview
     private JComboBox<String> movieCombo;
@@ -68,6 +70,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         EventBus.getInstance().subscribe("BOOKINGS_UPDATED", this);
         EventBus.getInstance().subscribe("MEDIA_UPDATED", this);
         EventBus.getInstance().subscribe("MEDIA_SEARCH_RESULTS", this);
+        EventBus.getInstance().subscribe("USER_SWITCHED", this);
 
         renderBookings(service.getBookings());
         renderWatchlist(service.getMediaItems());
@@ -183,7 +186,7 @@ public class MediaPanel extends JPanel implements NexusListener {
 
         // Right Checkout Panel
         JPanel checkoutPanel = createCheckoutPanel();
-        checkoutPanel.setPreferredSize(new Dimension(320, 400));
+        checkoutPanel.setPreferredSize(new Dimension(340, 520));
         centerGrid.add(checkoutPanel, BorderLayout.EAST);
 
         panel.add(centerGrid, BorderLayout.CENTER);
@@ -290,19 +293,20 @@ public class MediaPanel extends JPanel implements NexusListener {
     }
 
     private JPanel createCheckoutPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel panel = new JPanel(new BorderLayout(10, 8));
         panel.setBackground(new Color(30, 41, 59));
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(51, 65, 85)),
                 BorderFactory.createEmptyBorder(12, 14, 12, 14)
         ));
 
-        JLabel title = new JLabel("BOOKING & PROMO SUMMARY");
+        JLabel title = new JLabel("🎟️ BOOKING & PROMO SUMMARY");
         title.setFont(new Font("Segoe UI", Font.BOLD, 13));
         title.setForeground(new Color(56, 189, 248));
         panel.add(title, BorderLayout.NORTH);
 
-        JPanel details = new JPanel(new GridLayout(6, 1, 4, 4));
+        JPanel details = new JPanel();
+        details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
         details.setOpaque(false);
 
         selectedSeatsLabel = new JLabel("None Selected");
@@ -310,25 +314,67 @@ public class MediaPanel extends JPanel implements NexusListener {
         selectedSeatsLabel.setForeground(new Color(52, 211, 153));
 
         subtotalLabel = new JLabel("$0.00");
-        subtotalLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        subtotalLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         subtotalLabel.setForeground(Color.WHITE);
 
         discountLabel = new JLabel("-$0.00 (None)");
-        discountLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        discountLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         discountLabel.setForeground(new Color(248, 113, 113));
 
         totalPayableLabel = new JLabel("$0.00");
-        totalPayableLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        totalPayableLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
         totalPayableLabel.setForeground(new Color(52, 211, 153));
 
         details.add(createRow("Allocated Seats:", selectedSeatsLabel));
+        details.add(Box.createVerticalStrut(4));
         details.add(createRow("Base Subtotal:", subtotalLabel));
+        details.add(Box.createVerticalStrut(4));
         details.add(createRow("Applied Discount:", discountLabel));
+        details.add(Box.createVerticalStrut(4));
         details.add(createRow("Total Amount:", totalPayableLabel));
+        details.add(Box.createVerticalStrut(10));
 
+        // 1. PAYMENT MODES SELECTOR
+        JLabel payLabel = new JLabel("Select Payment Mode:");
+        payLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        payLabel.setForeground(new Color(203, 213, 225));
+        details.add(payLabel);
+        details.add(Box.createVerticalStrut(3));
+
+        String[] payMethods = {
+                "💳 NEXUS Capital Wallet (Instant 1-Click)",
+                "⚡ UPI / Google Pay (VPA Scan & Pay)",
+                "🏦 Credit / Debit Card (Visa/Mastercard)",
+                "🎓 SRM Student Concession Card",
+                "🪙 Crypto Pay (BTC / Lightning)"
+        };
+        paymentMethodCombo = new JComboBox<>(payMethods);
+        paymentMethodCombo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        paymentMethodCombo.setMaximumSize(new Dimension(320, 26));
+        details.add(paymentMethodCombo);
+        details.add(Box.createVerticalStrut(10));
+
+        // 2. CLICKABLE OFFERS & CONCESSIONS
+        JLabel offersLabel = new JLabel("Active Offers & Promo Codes:");
+        offersLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        offersLabel.setForeground(new Color(251, 191, 36));
+        details.add(offersLabel);
+        details.add(Box.createVerticalStrut(4));
+
+        JPanel offersGrid = new JPanel(new GridLayout(2, 2, 4, 4));
+        offersGrid.setOpaque(false);
+        offersGrid.setMaximumSize(new Dimension(320, 52));
+        offersGrid.add(createOfferChip("SRMSTUDENT", "25% Student"));
+        offersGrid.add(createOfferChip("NEXUS50", "$50 Flat"));
+        offersGrid.add(createOfferChip("FIRSTSHOW", "15% Morning"));
+        offersGrid.add(createOfferChip("WEEKEND", "10% Binge"));
+        details.add(offersGrid);
+        details.add(Box.createVerticalStrut(8));
+
+        // 3. PROMO CODE FIELD
         JPanel promoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         promoRow.setOpaque(false);
-        promoCodeField = new JTextField(8);
+        promoCodeField = new JTextField(9);
         promoCodeField.setFont(new Font("Consolas", Font.BOLD, 11));
         promoCodeField.setText("SRMSTUDENT");
 
@@ -336,22 +382,18 @@ public class MediaPanel extends JPanel implements NexusListener {
         applyPromoBtn.setFont(new Font("Segoe UI", Font.BOLD, 10));
         applyPromoBtn.setBackground(new Color(59, 130, 246));
         applyPromoBtn.setForeground(Color.WHITE);
-        applyPromoBtn.addActionListener(e -> {
-            currentPromoCode = promoCodeField.getText().trim();
-            updatePricingSummary();
-            JOptionPane.showMessageDialog(this, "Promo Code '" + currentPromoCode + "' validated! Discount applied.", 
-                    "Coupon Applied", JOptionPane.INFORMATION_MESSAGE);
-        });
+        applyPromoBtn.addActionListener(e -> applyPromo(promoCodeField.getText().trim()));
 
-        promoRow.add(new JLabel("Code:"));
+        promoRow.add(new JLabel("Promo:"));
         promoRow.add(promoCodeField);
         promoRow.add(applyPromoBtn);
         details.add(promoRow);
+        details.add(Box.createVerticalStrut(4));
 
-        JLabel hints = new JLabel("Coupons: SRMSTUDENT (25%) | NEXUS50 ($50)");
-        hints.setFont(new Font("Segoe UI", Font.ITALIC, 10));
-        hints.setForeground(new Color(156, 163, 175));
-        details.add(hints);
+        activeOfferLabel = new JLabel("✓ SRMSTUDENT: 25% Student Concession Active");
+        activeOfferLabel.setFont(new Font("Segoe UI", Font.ITALIC, 10));
+        activeOfferLabel.setForeground(new Color(52, 211, 153));
+        details.add(activeOfferLabel);
 
         panel.add(details, BorderLayout.CENTER);
 
@@ -368,6 +410,27 @@ public class MediaPanel extends JPanel implements NexusListener {
         return panel;
     }
 
+    private JButton createOfferChip(String code, String desc) {
+        JButton btn = new JButton("<html><center><b>" + code + "</b> (" + desc + ")</center></html>");
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        btn.setBackground(new Color(30, 41, 59));
+        btn.setForeground(new Color(251, 191, 36));
+        btn.setBorder(BorderFactory.createLineBorder(new Color(245, 158, 11), 1));
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.addActionListener(e -> applyPromo(code));
+        return btn;
+    }
+
+    private void applyPromo(String code) {
+        currentPromoCode = code.trim().toUpperCase();
+        promoCodeField.setText(currentPromoCode);
+        updatePricingSummary();
+        if (activeOfferLabel != null) {
+            activeOfferLabel.setText("✓ " + currentPromoCode + " Applied! Discount: $" + String.format("%.2f", currentDiscount));
+        }
+    }
+
     private void confirmBooking() {
         if (selectedSeatCodes.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please select at least one seat from the matrix.", "No Seats Selected", JOptionPane.WARNING_MESSAGE);
@@ -377,6 +440,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         String movie = (String) movieCombo.getSelectedItem();
         String theatre = (String) theatreCombo.getSelectedItem();
         String show = (String) showtimeCombo.getSelectedItem();
+        String payment = paymentMethodCombo != null ? (String) paymentMethodCombo.getSelectedItem() : "NEXUS Capital Wallet";
 
         double subtotal = 0;
         for (String code : selectedSeatCodes) {
@@ -386,7 +450,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         double payable = Math.max(0, subtotal - currentDiscount);
 
         CinemaBooking booking = service.createBooking(movie, theatre, show, new ArrayList<>(selectedSeatCodes), 
-                subtotal, currentDiscount, currentPromoCode, payable);
+                subtotal, currentDiscount, currentPromoCode, payable, payment);
 
         for (String code : selectedSeatCodes) {
             CinemaSeat seat = seatMap.get(code);
@@ -406,7 +470,7 @@ public class MediaPanel extends JPanel implements NexusListener {
 
     private void showDigitalTicketDialog(CinemaBooking b) {
         JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Digital Cinema Pass - Confirmed", true);
-        dlg.setSize(520, 400);
+        dlg.setSize(540, 430);
         dlg.setLocationRelativeTo(this);
 
         JPanel p = new JPanel(new BorderLayout(12, 10));
@@ -418,7 +482,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         header.setForeground(new Color(56, 189, 248));
         p.add(header, BorderLayout.NORTH);
 
-        // Left Poster in Ticket Dialog!
+        // Left Poster in Ticket Dialog
         JLabel ticketPosterLabel = new JLabel();
         ticketPosterLabel.setPreferredSize(new Dimension(110, 160));
         ticketPosterLabel.setOpaque(true);
@@ -445,15 +509,18 @@ public class MediaPanel extends JPanel implements NexusListener {
                 SHOWTIME    : %s
                 SEATS       : %s
                 -----------------------------------
+                PAYMENT MODE: %s
+                PROMO CODE  : %s (-$%.2f)
                 BASE FARE   : $%.2f
-                DISCOUNT    : -$%.2f (%s)
                 TOTAL PAID  : $%.2f
                 ===================================
                 [|||  ||||| ||  ||||||||| | ||||| ]
                 VALID FOR CINEMA ADMISSION GATE
+                SRM SMART CAMPUS PASS #VERIFIED
                 """,
                 b.getId(), b.getMovieTitle(), b.getTheatre(), b.getShowTime(),
-                b.getSeatsFormatted(), b.getBasePrice(), b.getDiscount(), b.getPromoCode(), b.getFinalTotal()));
+                b.getSeatsFormatted(), b.getPaymentMethod(), b.getPromoCode(), b.getDiscount(),
+                b.getBasePrice(), b.getFinalTotal()));
 
         centerPanel.add(new JScrollPane(info), BorderLayout.CENTER);
         p.add(centerPanel, BorderLayout.CENTER);
@@ -563,11 +630,17 @@ public class MediaPanel extends JPanel implements NexusListener {
         venue.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         venue.setForeground(new Color(147, 197, 253));
 
+        JLabel payMeta = new JLabel("💳 " + b.getPaymentMethod() + (!"NONE".equalsIgnoreCase(b.getPromoCode()) ? "  •  Promo: " + b.getPromoCode() + " (-$" + String.format("%.2f", b.getDiscount()) + ")" : ""));
+        payMeta.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        payMeta.setForeground(new Color(56, 189, 248));
+
         left.add(ref);
         left.add(Box.createVerticalStrut(2));
         left.add(title);
         left.add(Box.createVerticalStrut(2));
         left.add(venue);
+        left.add(Box.createVerticalStrut(2));
+        left.add(payMeta);
 
         card.add(left, BorderLayout.CENTER);
 
@@ -755,7 +828,24 @@ public class MediaPanel extends JPanel implements NexusListener {
                 @SuppressWarnings("unchecked")
                 List<MediaItem> results = (List<MediaItem>) event.getPayload();
                 renderLiveSearchResults(results);
+            } else if ("USER_SWITCHED".equals(event.getType())) {
+                nexus.auth.UserProfile profile = (nexus.auth.UserProfile) event.getPayload();
+                syncUserProfile(profile);
             }
         });
+    }
+
+    private void syncUserProfile(nexus.auth.UserProfile profile) {
+        if (profile == null) return;
+        if (paymentMethodCombo != null) {
+            String def = profile.getDefaultPaymentMethod();
+            if (def.contains("Faculty") || def.contains("Concession")) {
+                paymentMethodCombo.setSelectedItem("🎓 SRM Student Concession Card");
+            } else if (def.contains("UPI")) {
+                paymentMethodCombo.setSelectedItem("⚡ UPI / Google Pay (VPA Scan & Pay)");
+            } else {
+                paymentMethodCombo.setSelectedItem("💳 NEXUS Capital Wallet (Instant 1-Click)");
+            }
+        }
     }
 }
