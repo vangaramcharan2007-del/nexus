@@ -176,6 +176,12 @@ public class NexusApplication extends JFrame {
                         showExaminerAuditDialog(2);
                     } else if (targetTab.contains("Web3") || targetTab.contains("P12")) {
                         showExaminerAuditDialog(3);
+                    } else if (targetTab.contains("P13") || targetTab.contains("Resilience") || targetTab.contains("Breaker")) {
+                        showExaminerAuditDialog(4);
+                    } else if (targetTab.contains("P14") || targetTab.contains("Vault") || targetTab.contains("AuditChain")) {
+                        showExaminerAuditDialog(5);
+                    } else if (targetTab.contains("P16") || targetTab.contains("Tenant") || targetTab.contains("Sharding")) {
+                        showExaminerAuditDialog(6);
                     } else {
                         for (int i = 0; i < tabbedPane.getTabCount(); i++) {
                             if (tabbedPane.getTitleAt(i).toLowerCase().contains(targetTab.toLowerCase())) {
@@ -320,6 +326,9 @@ public class NexusApplication extends JFrame {
         auditTabs.addTab("📱 Mobile 15s Dynamic QR Engine (Phase 9)", new nexus.mobile.MobilePassPanel());
         auditTabs.addTab("📈 Autonomous Quantitative Engine & LSTM (Phase 10)", new nexus.copilot.AiCopilotPanel());
         auditTabs.addTab("🌐 Web3 zk-SNARK & Grade Signer (Phase 12)", new nexus.web3.Web3ProtocolPanel());
+        auditTabs.addTab("🛡️ Circuit Breakers & In-Memory Cache (Phase 13)", new nexus.resilience.ResiliencePanel());
+        auditTabs.addTab("🔒 Encrypted Vault & Hash Chain (Phase 14)", new nexus.vault.VaultAuditPanel());
+        auditTabs.addTab("🏛️ Multi-Tenant Sharding & RBAC 2.0 (Phase 16)", new nexus.tenant.TenantPanel());
 
         if (initialSubtab >= 0 && initialSubtab < auditTabs.getTabCount()) {
             auditTabs.setSelectedIndex(initialSubtab);
