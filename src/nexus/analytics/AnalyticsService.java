@@ -41,6 +41,18 @@ public class AnalyticsService implements NexusListener {
         generateInsight("Real-Time Amazon India & TVMaze gateways responding within nominal latency (<1.2s).", Insight.Level.SUCCESS);
         generateInsight("Campus atmospheric sensors: Kattankulathur climate optimal at 30.6°C.", Insight.Level.INFO);
         generateInsight("Executive recommendation: Maintain 75%+ capital preservation ratio into Q4.", Insight.Level.WARNING);
+
+        new Thread(() -> {
+            String aiForecast = nexus.copilot.NexusAiClient.queryAi(
+                    "Give a 1-sentence predictive forecast on student budget solvency and savings advice for SRM University student.",
+                    "You are NEXUS AI Intelligence. One punchy, reassuring sentence."
+            );
+            if (aiForecast != null && !aiForecast.isBlank()) {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    generateInsight("🧠 AI Predictive Forecast: " + aiForecast.trim(), Insight.Level.REWARD);
+                });
+            }
+        }).start();
     }
     
     @Override

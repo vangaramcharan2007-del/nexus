@@ -7,7 +7,15 @@ import nexus.finance.FinancialCalculator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
+/**
+ * Autonomous AI Copilot Service - Brain Core for Student Intelligence.
+ * 
+ * Author: Ram Charan Vanga (Reg No: RA2511027010164)
+ * Department of Computer Science & Engineering
+ * SRM Institute of Science and Technology, Kattankulathur
+ */
 public class AiCopilotService implements NexusListener {
     private static final AiCopilotService instance = new AiCopilotService();
 
@@ -50,7 +58,7 @@ public class AiCopilotService implements NexusListener {
         ));
 
         // 3. Guardian Agent
-        cashRunwayDays = (int) (currentBalance / dailyBurnRate);
+        cashRunwayDays = (int) (currentBalance / Math.max(1.0, dailyBurnRate));
         safeDailyLimit = Math.min(65.0, currentBalance / 30.0);
         agentReports.add(new CopilotAgentReport(
                 "Guardian Agent (Sentinel)",
@@ -61,58 +69,34 @@ public class AiCopilotService implements NexusListener {
         ));
     }
 
-    public String executeNaturalLanguageCommand(String command) {
-        String cmd = command.toLowerCase().trim();
+    public CompletableFuture<String> executeNaturalLanguageCommandAsync(String command) {
+        return CompletableFuture.supplyAsync(() -> executeNaturalLanguageCommand(command));
+    }
 
-        if (cmd.contains("audit") || cmd.contains("budget")) {
+    public String executeNaturalLanguageCommand(String command) {
+        if (command == null || command.isBlank()) return "Please enter a valid command or query.";
+        
+        String context = String.format(
+                "You are NEXUS AI Copilot, developed by Ram Charan Vanga (RA2511027010164) for SRM University students. " +
+                "Live Financial State: Balance=$%.2f, DailyBurn=$%.2f/day, SafeAllowance=$%.2f/day, Runway=%d days. " +
+                "Respond in clear, concise bullet points with actionable student advice and numbers.",
+                currentBalance, dailyBurnRate, safeDailyLimit, cashRunwayDays
+        );
+
+        // Attempt live LLM reasoning via NexusAiClient
+        String aiResponse = NexusAiClient.queryAi(command, context);
+        if (aiResponse != null && !aiResponse.isBlank()) {
             return String.format("""
-                    [AI COPILOT AUDIT REPORT]
+                    [NEXUS NEURAL COPILOT INTELLIGENCE]
                     ----------------------------------------------------
-                    • Total Liquid Capital : $%,.2f
-                    • Calculated Burn Rate : $%,.2f / day
-                    • Safe Daily Allowance : $%,.2f
-                    • Discretionary Buffer : $%,.2f (Available for Cinema & Amazon)
-                    • Solvency Status      : AAA+ (Excellence Tier)
-                    ACTION TAKEN: Background automated guardrails aligned with SRM student profile.
-                    """, currentBalance, dailyBurnRate, safeDailyLimit, currentBalance * 0.25);
-        } else if (cmd.contains("rebalance") || cmd.contains("portfolio")) {
-            return """
-                    [AUTONOMOUS PORTFOLIO REBALANCING]
+                    %s
                     ----------------------------------------------------
-                    • Strategy    : Markowitz Modern Portfolio Theory (Target Sharpe 2.4)
-                    • Allocation  : 55% Low-Risk Cash | 30% Mutual Fund SIP | 15% Crypto Core
-                    • Action Done : Rebalanced $150 from idle cash into SIP compound yield.
-                    • Projected 5-Year Maturity: $21,800.18 (+45.3% Net Growth)
-                    """;
-        } else if (cmd.contains("runway") || cmd.contains("cash")) {
-            return String.format("""
-                    [CASH RUNWAY FORECAST]
-                    ----------------------------------------------------
-                    • Current Standing Balance : $%,.2f
-                    • Current Daily Burn Rate  : $%,.2f
-                    • Calculated Safe Runway   : %d Days (~%.1f Months)
-                    • Risk of Deficit          : 0.00% (No emergency alerts triggered)
-                    """, currentBalance, dailyBurnRate, cashRunwayDays, cashRunwayDays / 30.0);
-        } else if (cmd.contains("emi") || cmd.contains("loan")) {
-            FinancialCalculator.EmiResult emi = FinancialCalculator.calculateEmi(65000.0, 9.0, 24);
-            return String.format("""
-                    [AUTONOMOUS LOAN & EMI SIMULATION]
-                    ----------------------------------------------------
-                    • Principal Analyzed : ₹65,000 ($783.13)
-                    • Interest Rate      : 9.0%% per annum (24 Months)
-                    • Monthly Deduction  : ₹%,.2f (Automatic background servicing)
-                    • Total Interest     : ₹%,.2f
-                    • Impact on Runway   : Decreases safe runway by only 4.2 days. APPROVED.
-                    """, emi.monthlyEmi, emi.totalInterest);
-        } else {
-            return String.format("""
-                    [AI COPILOT INTENT RESOLVED]
-                    Executing query '%s'...
-                    • All background calculations synchronized with central EventBus.
-                    • Ledger balance intact: $%,.2f. Safe runway: %d days.
-                    • 3 autonomous agents operating at 100%% efficiency.
-                    """, command, currentBalance, cashRunwayDays);
+                    • Ledger Synced: $%,.2f | Safe Runway: %d Days | Risk: Minimal
+                    """, aiResponse.trim(), currentBalance, cashRunwayDays);
         }
+
+        // Deterministic fallback
+        return NexusAiClient.generateLocalHeuristicResponse(command);
     }
 
     public List<Double> get30DayRunwayCurve() {

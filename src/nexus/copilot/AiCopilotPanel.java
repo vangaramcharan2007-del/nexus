@@ -229,9 +229,16 @@ public class AiCopilotPanel extends JPanel {
     private void executeCommand(String cmd) {
         if (cmd.isEmpty()) return;
         commandInput.setText("");
-        String response = service.executeNaturalLanguageCommand(cmd);
-        commandOutputArea.append("\n> " + cmd + "\n" + response);
+        commandOutputArea.append("\n> " + cmd + "\n[AI Copilot Thinking... Querying neural reasoning engine...]\n");
         commandOutputArea.setCaretPosition(commandOutputArea.getDocument().getLength());
+
+        new Thread(() -> {
+            String response = service.executeNaturalLanguageCommand(cmd);
+            SwingUtilities.invokeLater(() -> {
+                commandOutputArea.append(response + "\n");
+                commandOutputArea.setCaretPosition(commandOutputArea.getDocument().getLength());
+            });
+        }).start();
     }
 
     private void renderAgentCards() {

@@ -736,6 +736,28 @@ public class MediaPanel extends JPanel implements NexusListener {
         searchBar.add(new JLabel("IMDb Search:"));
         searchBar.add(searchField);
         searchBar.add(searchBtn);
+
+        JButton aiMatchBtn = new JButton("✨ AI Movie Matchmaker");
+        aiMatchBtn.setBackground(new Color(16, 185, 129));
+        aiMatchBtn.setForeground(Color.WHITE);
+        aiMatchBtn.setFocusPainted(false);
+        aiMatchBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        aiMatchBtn.addActionListener(e -> {
+            String q = searchField.getText().trim();
+            if (q.isEmpty()) q = "Blockbuster Sci-Fi & Action";
+            final String finalQ = q;
+            JOptionPane.showMessageDialog(this, "AI Cinephile is analyzing student preferences for: " + finalQ + "...", "AI Matchmaker", JOptionPane.INFORMATION_MESSAGE);
+            new Thread(() -> {
+                String rec = nexus.copilot.NexusAiClient.queryAi(
+                        "Recommend 2 top rated movies or series matching: " + finalQ + " for an SRM college student with brief reasons and IMDb score.",
+                        "You are NEXUS AI Movie Matchmaker. Respond in concise bullet points."
+                );
+                SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(this, rec, "🎬 AI Cinephile Recommendations (" + finalQ + ")", JOptionPane.INFORMATION_MESSAGE);
+                });
+            }).start();
+        });
+        searchBar.add(aiMatchBtn);
         panel.add(searchBar, BorderLayout.NORTH);
 
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);

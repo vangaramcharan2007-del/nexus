@@ -1,0 +1,5 @@
+nexus.db-shm
+nexus.db-wal
+nexus_api.key
+*.key
+*.log

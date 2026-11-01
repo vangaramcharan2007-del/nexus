@@ -21,6 +21,10 @@ import nexus.auth.LoginPanel;
 /**
  * NEXUS Enterprise Application Shell - Production Architecture for Review 2.
  * 
+ * Author: Ram Charan Vanga (Reg No: RA2511027010164)
+ * Department of Computer Science & Engineering
+ * SRM Institute of Science and Technology, Kattankulathur
+ * 
  * Core Capabilities:
  * 1. EventBus Pub/Sub decoupled reactive event hub.
  * 2. SQLite single-threaded asynchronous persistent database (Tasks, Transactions, Goals, Media, Bookings).
@@ -40,6 +44,7 @@ import nexus.auth.LoginPanel;
  * 6. Strategic Goals with deadline tracking, milestones, and progress bars.
  */
 public class NexusApplication extends JFrame {
+    private nexus.copilot.AiAssistantDialog aiAssistantDialog;
     
     public NexusApplication() {
         setTitle("NEXUS Enterprise Platform - Review 2 Edition");
@@ -154,7 +159,14 @@ public class NexusApplication extends JFrame {
         nexus.common.EventBus.getInstance().subscribeToAll(new nexus.common.NexusListener() {
             @Override
             public void onEvent(nexus.common.NexusEvent event) {
-                if ("NAVIGATION_REQUEST".equals(event.getType())) {
+                if ("OPEN_AI_ASSISTANT".equals(event.getType())) {
+                    SwingUtilities.invokeLater(() -> {
+                        if (aiAssistantDialog == null) {
+                            aiAssistantDialog = new nexus.copilot.AiAssistantDialog(NexusApplication.this);
+                        }
+                        aiAssistantDialog.setVisible(true);
+                    });
+                } else if ("NAVIGATION_REQUEST".equals(event.getType())) {
                     String targetTab = (String) event.getPayload();
                     if (targetTab.contains("Cloud") || targetTab.contains("P8")) {
                         showExaminerAuditDialog(0);
@@ -264,6 +276,19 @@ public class NexusApplication extends JFrame {
             }
         });
 
+        JButton aiBtn = new JButton("✨ AI Copilot");
+        aiBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        aiBtn.setBackground(new Color(16, 185, 129));
+        aiBtn.setForeground(Color.WHITE);
+        aiBtn.setFocusPainted(false);
+        aiBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        aiBtn.addActionListener(e -> {
+            if (aiAssistantDialog == null) {
+                aiAssistantDialog = new nexus.copilot.AiAssistantDialog(this);
+            }
+            aiAssistantDialog.setVisible(true);
+        });
+
         JButton auditBtn = new JButton("🎓 Examiner Review & Architecture ⚙️");
         auditBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         auditBtn.setBackground(new Color(245, 158, 11)); // Amber/Gold accent
@@ -272,6 +297,8 @@ public class NexusApplication extends JFrame {
         auditBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         auditBtn.addActionListener(e -> showExaminerAuditDialog(0));
 
+        rightPanel.add(aiBtn);
+        rightPanel.add(Box.createHorizontalStrut(8));
         rightPanel.add(auditBtn);
         rightPanel.add(Box.createHorizontalStrut(8));
         rightPanel.add(switchLabel);
