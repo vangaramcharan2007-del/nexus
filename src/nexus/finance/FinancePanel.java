@@ -45,6 +45,8 @@ public class FinancePanel extends JPanel implements NexusListener {
         topContainer.add(Box.createVerticalStrut(8));
         topContainer.add(createAutomatedKpiPanel());
         topContainer.add(Box.createVerticalStrut(8));
+        topContainer.add(createAiCopilotBanner());
+        topContainer.add(Box.createVerticalStrut(8));
         topContainer.add(createProgressBarPanel());
 
         add(topContainer, BorderLayout.NORTH);
@@ -174,6 +176,36 @@ public class FinancePanel extends JPanel implements NexusListener {
         panel.add(createCard("CASH RUNWAY", runwayVal, new Color(168, 85, 247)));
 
         return panel;
+    }
+
+    private JPanel createAiCopilotBanner() {
+        JPanel bar = new JPanel(new BorderLayout(10, 0));
+        bar.setBackground(new Color(24, 30, 42));
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(51, 65, 85)),
+                BorderFactory.createEmptyBorder(6, 14, 6, 14)
+        ));
+
+        JLabel title = new JLabel("💡 AI Financial Copilot:");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        title.setForeground(new Color(52, 211, 153));
+
+        JLabel text = new JLabel("Daily Burn Rate: $38.50/day • Safe Runway: 140 Days (~4.6 Months) • +$18.40 Passive Compound Yield Earned");
+        text.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        text.setForeground(new Color(203, 213, 225));
+
+        JButton askBtn = new JButton("Open AI Copilot Advisor ⚡");
+        askBtn.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        askBtn.setBackground(new Color(16, 185, 129));
+        askBtn.setForeground(Color.WHITE);
+        askBtn.setFocusPainted(false);
+        askBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        askBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "AI Copilot (P10)", "Finance")));
+
+        bar.add(title, BorderLayout.WEST);
+        bar.add(text, BorderLayout.CENTER);
+        bar.add(askBtn, BorderLayout.EAST);
+        return bar;
     }
 
     private JPanel createCard(String title, JLabel valueLabel, Color accent) {

@@ -470,7 +470,7 @@ public class MediaPanel extends JPanel implements NexusListener {
 
     private void showDigitalTicketDialog(CinemaBooking b) {
         JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Digital Cinema Pass - Confirmed", true);
-        dlg.setSize(540, 430);
+        dlg.setSize(690, 440);
         dlg.setLocationRelativeTo(this);
 
         JPanel p = new JPanel(new BorderLayout(12, 10));
@@ -514,7 +514,6 @@ public class MediaPanel extends JPanel implements NexusListener {
                 BASE FARE   : $%.2f
                 TOTAL PAID  : $%.2f
                 ===================================
-                [|||  ||||| ||  ||||||||| | ||||| ]
                 VALID FOR CINEMA ADMISSION GATE
                 SRM SMART CAMPUS PASS #VERIFIED
                 """,
@@ -523,14 +522,37 @@ public class MediaPanel extends JPanel implements NexusListener {
                 b.getBasePrice(), b.getFinalTotal()));
 
         centerPanel.add(new JScrollPane(info), BorderLayout.CENTER);
+
+        // Right side: Real 2D QR Code Matrix
+        JPanel qrPanel = new JPanel(new BorderLayout(0, 4));
+        qrPanel.setOpaque(false);
+        qrPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(51, 65, 85)),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)
+        ));
+
+        String qrPayload = nexus.mobile.MobilePassService.getInstance().generateFullPayload(
+                nexus.mobile.MobilePassService.getInstance().getCurrentWindow());
+        java.awt.image.BufferedImage qrImg = nexus.mobile.DynamicQrGenerator.generateQrImage(qrPayload, 130);
+
+        JLabel qrLabel = new JLabel(new ImageIcon(qrImg));
+        qrLabel.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JLabel qrMeta = new JLabel("<html><center><font color='#38bdf8'><b>GATE SCAN PASS</b></font><br><font color='#94a3b8' size='2'>15s Dynamic Anti-Scalp</font></center></html>", SwingConstants.CENTER);
+
+        qrPanel.add(qrLabel, BorderLayout.CENTER);
+        qrPanel.add(qrMeta, BorderLayout.SOUTH);
+
+        centerPanel.add(qrPanel, BorderLayout.EAST);
         p.add(centerPanel, BorderLayout.CENTER);
 
         JPanel btm = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         btm.setOpaque(false);
 
-        JButton mobilePassBtn = new JButton("📱 Open Dynamic 15s QR Pass (P9)");
+        JButton mobilePassBtn = new JButton("📱 Test Gate Scanner Simulator");
         mobilePassBtn.setBackground(new Color(59, 130, 246));
         mobilePassBtn.setForeground(Color.WHITE);
+        mobilePassBtn.setFocusPainted(false);
         mobilePassBtn.addActionListener(e -> {
             nexus.auth.UserProfile prof = nexus.auth.AccountService.getInstance().getCurrentProfile();
             nexus.mobile.MobilePassService.getInstance().updateActiveBooking(
@@ -545,6 +567,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         JButton close = new JButton("Close Pass");
         close.setBackground(new Color(16, 185, 129));
         close.setForeground(Color.WHITE);
+        close.setFocusPainted(false);
         close.addActionListener(e -> dlg.dispose());
 
         btm.add(mobilePassBtn);
