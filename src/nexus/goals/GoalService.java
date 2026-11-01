@@ -6,34 +6,47 @@ import nexus.common.NexusListener;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The GoalService acts as the 'Controller' or 'Business Logic' layer for its respective module.
- * 
- * In a professional software architecture (like MVC or MVVM), Services are responsible for:
- * 1. Managing data state (holding the lists of items, scores, or configurations).
- * 2. Processing business rules (e.g., verifying if an action is valid).
- * 3. Communicating with other parts of the application (publishing events to the EventBus).
- * 
- * By keeping this logic out of the GUI Panels, the code remains easy to test, maintain, and extend.
- */
 public class GoalService implements NexusListener {
     private List<Goal> goals;
     
     public GoalService() {
         goals = new ArrayList<>();
         EventBus.getInstance().subscribe("ITEM_PURCHASED", this);
+        EventBus.getInstance().subscribe("TASK_COMPLETED", this);
+
+        seedDefaults();
+    }
+
+    private void seedDefaults() {
+        Goal g1 = new Goal("A+ Grade in AOOP Review 2", "Academic", "Nov 2, 2026");
+        g1.addMilestone(new Milestone("Implement Real-Time TVMaze & CoinGecko APIs"));
+        g1.addMilestone(new Milestone("Build Modern UI with FlatLaf Charts"));
+        g1.addMilestone(new Milestone("Verify Full SQLite Database Persistence"));
+        goals.add(g1);
+
+        Goal g2 = new Goal("Master Full-Stack Java Desktop Architecture", "Professional", "December 2026");
+        g2.addMilestone(new Milestone("Study Event-Driven Pub/Sub Design Pattern"));
+        g2.addMilestone(new Milestone("Implement Thread-Safe Database Write Queues"));
+        goals.add(g2);
     }
     
     public void addGoal(String title) {
-        Goal g = new Goal(title);
-        goals.add(g);
+        addGoal(title, "Academic", "This Month");
+    }
+
+    public void addGoal(String title, String category, String deadline) {
+        Goal g = new Goal(title, category, deadline);
+        goals.add(0, g);
+        EventBus.getInstance().publish(new NexusEvent("GOAL_ADDED", g, "Goals"));
         EventBus.getInstance().publish(new NexusEvent("GOALS_UPDATED", goals, "Goals"));
     }
     
     public void addMilestoneToGoal(String goalId, String milestoneDesc) {
-        for(Goal g : goals) {
-            if(g.getId().equals(goalId)) {
-                g.addMilestone(new Milestone(milestoneDesc));
+        for (Goal g : goals) {
+            if (g.getId().equals(goalId)) {
+                Milestone m = new Milestone(milestoneDesc);
+                g.addMilestone(m);
+                EventBus.getInstance().publish(new NexusEvent("MILESTONE_ADDED", m, "Goals"));
                 EventBus.getInstance().publish(new NexusEvent("GOALS_UPDATED", goals, "Goals"));
                 break;
             }
@@ -41,10 +54,11 @@ public class GoalService implements NexusListener {
     }
     
     public void completeMilestone(String goalId, int milestoneIndex) {
-        for(Goal g : goals) {
-            if(g.getId().equals(goalId)) {
-                if(milestoneIndex >= 0 && milestoneIndex < g.getMilestones().size()) {
-                    g.getMilestones().get(milestoneIndex).setCompleted(true);
+        for (Goal g : goals) {
+            if (g.getId().equals(goalId)) {
+                if (milestoneIndex >= 0 && milestoneIndex < g.getMilestones().size()) {
+                    Milestone m = g.getMilestones().get(milestoneIndex);
+                    m.setCompleted(!m.isCompleted()); // Toggle
                     EventBus.getInstance().publish(new NexusEvent("GOALS_UPDATED", goals, "Goals"));
                     
                     if (g.getProgress() >= 1.0) {
@@ -55,6 +69,20 @@ public class GoalService implements NexusListener {
             }
         }
     }
+
+    public void deleteGoal(String id) {
+        Goal removed = null;
+        for (int i = 0; i < goals.size(); i++) {
+            if (goals.get(i).getId().equals(id)) {
+                removed = goals.remove(i);
+                break;
+            }
+        }
+        if (removed != null) {
+            EventBus.getInstance().publish(new NexusEvent("GOAL_DELETED", removed, "Goals"));
+            EventBus.getInstance().publish(new NexusEvent("GOALS_UPDATED", goals, "Goals"));
+        }
+    }
     
     @Override
     public void onEvent(NexusEvent event) {
@@ -62,14 +90,20 @@ public class GoalService implements NexusListener {
             nexus.market.Product product = (nexus.market.Product) event.getPayload();
             String pName = product.getName().toLowerCase();
             for (Goal g : goals) {
-                if (g.getTitle().toLowerCase().contains(pName) && g.getProgress() < 1.0) {
-                    addMilestoneToGoal(g.getId(), "Purchased " + product.getName());
-                    completeMilestone(g.getId(), g.getMilestones().size() - 1);
-                }
-                
                 for (int i = 0; i < g.getMilestones().size(); i++) {
                     Milestone m = g.getMilestones().get(i);
                     if (!m.isCompleted() && m.getDescription().toLowerCase().contains(pName)) {
+                        completeMilestone(g.getId(), i);
+                    }
+                }
+            }
+        } else if ("TASK_COMPLETED".equals(event.getType())) {
+            nexus.tasks.Task task = (nexus.tasks.Task) event.getPayload();
+            String taskTitle = task.getTitle().toLowerCase();
+            for (Goal g : goals) {
+                for (int i = 0; i < g.getMilestones().size(); i++) {
+                    Milestone m = g.getMilestones().get(i);
+                    if (!m.isCompleted() && taskTitle.contains(m.getDescription().toLowerCase())) {
                         completeMilestone(g.getId(), i);
                     }
                 }
@@ -78,4 +112,11 @@ public class GoalService implements NexusListener {
     }
     
     public List<Goal> getGoals() { return goals; }
+
+    public void setGoals(List<Goal> loadedGoals) {
+        if (loadedGoals != null && !loadedGoals.isEmpty()) {
+            this.goals = loadedGoals;
+            EventBus.getInstance().publish(new NexusEvent("GOALS_UPDATED", goals, "Goals"));
+        }
+    }
 }

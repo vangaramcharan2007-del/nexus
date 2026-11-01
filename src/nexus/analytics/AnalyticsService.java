@@ -27,6 +27,7 @@ public class AnalyticsService implements NexusListener {
         EventBus.getInstance().subscribe("TASK_COMPLETED", this);
         EventBus.getInstance().subscribe("PRODUCT_PURCHASED", this);
         EventBus.getInstance().subscribe("MEDIA_COMPLETED", this);
+        EventBus.getInstance().subscribe("GOAL_COMPLETED", this);
     }
     
     private void generateInsight(String message) {
@@ -49,10 +50,21 @@ public class AnalyticsService implements NexusListener {
             nexus.media.MediaItem media = (nexus.media.MediaItem) event.getPayload();
             score.addPoints(5);
             generateInsight("Finished consuming: " + media.getTitle() + ". +5 points.");
+        } else if ("GOAL_COMPLETED".equals(event.getType())) {
+            nexus.goals.Goal goal = (nexus.goals.Goal) event.getPayload();
+            score.addPoints(25);
+            generateInsight("\uD83C\uDFC6 Goal Achieved: \"" + goal.getTitle() + "\"! +25 bonus points!");
+        } else if ("ADD_SCORE_REQUEST".equals(event.getType())) {
+            score.addPoints((Integer) event.getPayload());
+            generateInsight("Rule triggered: +" + event.getPayload() + " points.");
+        } else if ("GOD_MODE_SCORE".equals(event.getType())) {
+            score.addPoints((Integer) event.getPayload());
+            generateInsight("God Mode Cheat: +" + event.getPayload() + " points.");
         }
-        EventBus.getInstance().publish(new NexusEvent("SCORE_UPDATED", score.getScore(), "Analytics"));
+        EventBus.getInstance().publish(new NexusEvent("XP_UPDATED", score.getScore(), "Analytics"));
     }
     
     public int getCurrentScore() { return score.getScore(); }
     public List<Insight> getInsights() { return insights; }
 }
+

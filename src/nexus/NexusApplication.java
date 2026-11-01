@@ -22,19 +22,17 @@ import nexus.auth.LoginPanel;
  * The NexusApplication is the main entry point and the core graphical shell of the NEXUS application.
  * It extends JFrame to provide a windowed user interface.
  * 
- * This class is responsible for:
- * 1. Bootstrapping the application (initializing services, connecting to the database).
- * 2. Assembling the User Interface (UI) by connecting GUI Panels to their respective Services.
- * 3. Handling high-level state changes, like switching from the Login screen to the Main Application.
- * 
- * By passing Services into Panels via their constructors (Dependency Injection), 
- * we separate the visual representation (the Panel) from the business logic (the Service).
+ * Review 2 Enterprise Architecture:
+ * 1. EventBus Pub/Sub decoupled inter-module messaging.
+ * 2. SQLite single-threaded asynchronous persistent storage for all modules.
+ * 3. Real-Time live API integration (CoinGecko crypto, TVMaze shows/movies, Open-Meteo SRM weather, Fakestore products).
+ * 4. Rich FlatLaf reactive dashboards with category pie charts, HUD widgets, progress meters.
  */
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
-        setTitle("NEXUS Application");
-        setSize(800, 600);
+        setTitle("NEXUS Enterprise Platform - Review 2 Edition");
+        setSize(1080, 720);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         setLocationRelativeTo(null);
         
@@ -65,7 +63,7 @@ public class NexusApplication extends JFrame {
         nexus.realtime.WindowsMediaHook mediaHook = new nexus.realtime.WindowsMediaHook();
         mediaHook.start();
         
-        // Populate UI/Services with DB data
+        // Populate UI/Services with persistent SQLite DB data
         java.util.List<nexus.tasks.Task> loadedTasks = databaseService.loadTasks();
         if (!loadedTasks.isEmpty()) {
             taskService.setTasks(loadedTasks);
@@ -76,9 +74,19 @@ public class NexusApplication extends JFrame {
             financeService.setTransactions(loadedTx);
         }
 
+        java.util.List<nexus.goals.Goal> loadedGoals = databaseService.loadGoals();
+        if (!loadedGoals.isEmpty()) {
+            goalService.setGoals(loadedGoals);
+        }
+
+        java.util.List<nexus.media.MediaItem> loadedMedia = databaseService.loadMedia();
+        if (!loadedMedia.isEmpty()) {
+            mediaService.setMediaItems(loadedMedia);
+        }
         
         // Create Tabs
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 12));
         
         tabbedPane.addTab("Dashboard", new DashboardPanel(dashboardService));
         tabbedPane.addTab("Finance", new FinancePanel(financeService));
@@ -152,4 +160,3 @@ public class NexusApplication extends JFrame {
         });
     }
 }
-

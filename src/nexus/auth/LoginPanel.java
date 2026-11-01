@@ -8,12 +8,16 @@ import java.util.function.Consumer;
 
 public class LoginPanel extends JPanel {
     private final Consumer<Void> onLoginSuccess;
+    private int scanLineY = 0;
+    private boolean scanDown = true;
+    private Timer scanTimer;
 
     public LoginPanel(Consumer<Void> onLoginSuccess) {
         this.onLoginSuccess = onLoginSuccess;
         setLayout(new GridLayout(1, 2));
+        setBackground(new Color(10, 10, 15));
 
-        // Left Panel - Dark Gradient
+        // Left Panel - Animated Scanner
         JPanel leftPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -22,13 +26,43 @@ public class LoginPanel extends JPanel {
                 g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
                 int w = getWidth();
                 int h = getHeight();
-                Color color1 = new Color(15, 15, 25);
-                Color color2 = new Color(45, 40, 70);
+                
+                Color color1 = new Color(5, 5, 15);
+                Color color2 = new Color(20, 20, 40);
                 GradientPaint gp = new GradientPaint(0, 0, color1, 0, h, color2);
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, w, h);
+
+                // Grid background
+                g2d.setColor(new Color(0, 255, 255, 20));
+                for(int i = 0; i < w; i += 40) {
+                    g2d.drawLine(i, 0, i, h);
+                }
+                for(int i = 0; i < h; i += 40) {
+                    g2d.drawLine(0, i, w, i);
+                }
+
+                // Scan line
+                g2d.setColor(new Color(0, 255, 255, 180));
+                g2d.fillRect(0, scanLineY, w, 4);
+                GradientPaint scanGlow = new GradientPaint(0, scanLineY - 20, new Color(0, 255, 255, 0), 0, scanLineY, new Color(0, 255, 255, 80));
+                g2d.setPaint(scanGlow);
+                g2d.fillRect(0, scanLineY - 20, w, 20);
             }
         };
+        
+        scanTimer = new Timer(16, e -> {
+            if (scanDown) {
+                scanLineY += 3;
+                if (scanLineY > leftPanel.getHeight()) scanDown = false;
+            } else {
+                scanLineY -= 3;
+                if (scanLineY < 0) scanDown = true;
+            }
+            leftPanel.repaint();
+        });
+        scanTimer.start();
+
         leftPanel.setLayout(new GridBagLayout());
         
         GridBagConstraints gbcLeft = new GridBagConstraints();
@@ -37,18 +71,19 @@ public class LoginPanel extends JPanel {
         gbcLeft.insets = new Insets(10, 10, 10, 10);
         
         JLabel titleLabel = new JLabel("NEXUS");
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 72));
-        titleLabel.setForeground(new Color(240, 240, 255));
+        titleLabel.setFont(new Font("Consolas", Font.BOLD, 80));
+        titleLabel.setForeground(new Color(0, 255, 255));
         leftPanel.add(titleLabel, gbcLeft);
         
         gbcLeft.gridy = 1;
-        JLabel subtitleLabel = new JLabel("The Future of Intelligence");
-        subtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 20));
-        subtitleLabel.setForeground(new Color(180, 180, 220));
+        JLabel subtitleLabel = new JLabel("SYSTEM INITIALIZATION v3.0");
+        subtitleLabel.setFont(new Font("Consolas", Font.PLAIN, 18));
+        subtitleLabel.setForeground(new Color(0, 200, 255));
         leftPanel.add(subtitleLabel, gbcLeft);
 
         // Right Panel - Login Form
         JPanel rightPanel = new JPanel(new GridBagLayout());
+        rightPanel.setOpaque(false);
         
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 30, 10, 30);
@@ -57,8 +92,9 @@ public class LoginPanel extends JPanel {
         gbc.gridy = 0;
         gbc.weightx = 1.0;
         
-        JLabel loginTitle = new JLabel("Welcome Back");
-        loginTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
+        JLabel loginTitle = new JLabel("ACCESS TERMINAL");
+        loginTitle.setFont(new Font("Consolas", Font.BOLD, 28));
+        loginTitle.setForeground(Color.WHITE);
         loginTitle.setHorizontalAlignment(SwingConstants.CENTER);
         rightPanel.add(loginTitle, gbc);
         
@@ -66,34 +102,36 @@ public class LoginPanel extends JPanel {
         gbc.insets = new Insets(40, 30, 10, 30);
         JTextField usernameField = new JTextField();
         usernameField.setPreferredSize(new Dimension(280, 45));
-        usernameField.putClientProperty("JComponent.roundRect", true);
-        usernameField.putClientProperty("JTextField.placeholderText", "Username");
-        usernameField.putClientProperty("JTextField.showClearButton", true);
-        usernameField.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        usernameField.setBackground(new Color(20, 20, 30));
+        usernameField.setForeground(new Color(0, 255, 255));
+        usernameField.setCaretColor(new Color(0, 255, 255));
+        usernameField.setBorder(BorderFactory.createLineBorder(new Color(0, 150, 255), 1));
+        usernameField.setFont(new Font("Consolas", Font.PLAIN, 16));
         rightPanel.add(usernameField, gbc);
         
         gbc.gridy++;
         gbc.insets = new Insets(10, 30, 30, 30);
         JPasswordField passwordField = new JPasswordField();
         passwordField.setPreferredSize(new Dimension(280, 45));
-        passwordField.putClientProperty("JComponent.roundRect", true);
-        passwordField.putClientProperty("JTextField.placeholderText", "Password");
-        passwordField.putClientProperty("JTextField.showClearButton", true);
-        passwordField.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        passwordField.setBackground(new Color(20, 20, 30));
+        passwordField.setForeground(new Color(0, 255, 255));
+        passwordField.setCaretColor(new Color(0, 255, 255));
+        passwordField.setBorder(BorderFactory.createLineBorder(new Color(0, 150, 255), 1));
+        passwordField.setFont(new Font("Consolas", Font.PLAIN, 16));
         rightPanel.add(passwordField, gbc);
         
         gbc.gridy++;
         gbc.insets = new Insets(10, 30, 10, 30);
-        JButton loginButton = new JButton("Login");
-        loginButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        JButton loginButton = new JButton("AUTHENTICATE");
+        loginButton.setFont(new Font("Consolas", Font.BOLD, 18));
         loginButton.setForeground(Color.WHITE);
         
-        Color buttonColor = new Color(50, 100, 255);
-        Color hoverColor = new Color(70, 130, 255);
+        Color buttonColor = new Color(0, 120, 255);
+        Color hoverColor = new Color(0, 180, 255);
         
         loginButton.setBackground(buttonColor);
         loginButton.setFocusPainted(false);
-        loginButton.setBorderPainted(false);
+        loginButton.setBorder(BorderFactory.createLineBorder(new Color(0, 255, 255), 2));
         loginButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         loginButton.setPreferredSize(new Dimension(280, 50));
         
@@ -113,14 +151,13 @@ public class LoginPanel extends JPanel {
         });
         
         loginButton.addActionListener(e -> {
-            loginButton.setText("Authenticating...");
+            loginButton.setText("VERIFYING...");
             loginButton.setEnabled(false);
             loginButton.setBackground(buttonColor);
             
             Timer timer = new Timer(1000, evt -> {
                 onLoginSuccess.accept(null);
-                // Reset in case they log out
-                loginButton.setText("Login");
+                loginButton.setText("AUTHENTICATE");
                 loginButton.setEnabled(true);
                 usernameField.setText("");
                 passwordField.setText("");
@@ -132,6 +169,7 @@ public class LoginPanel extends JPanel {
         rightPanel.add(loginButton, gbc);
         
         JPanel rightWrapper = new JPanel(new GridBagLayout());
+        rightWrapper.setBackground(new Color(10, 10, 15));
         rightWrapper.add(rightPanel);
 
         add(leftPanel);

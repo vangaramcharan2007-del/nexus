@@ -16,6 +16,7 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
     private JTextArea insightsArea;
     private AnimatedBarChart chart;
     
+    
     // Maintain state for chart data
     private Map<String, Double> chartData = new LinkedHashMap<>();
     
@@ -24,18 +25,20 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         
-        scoreLabel = new JLabel("Nexus Score: " + service.getCurrentScore());
+        scoreLabel = new JLabel("Nexus XP: " + service.getCurrentScore());
         scoreLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         scoreLabel.setHorizontalAlignment(SwingConstants.CENTER);
         scoreLabel.setBorder(BorderFactory.createEmptyBorder(20, 10, 20, 10));
         add(scoreLabel, BorderLayout.NORTH);
         
         chart = new AnimatedBarChart();
+        
         // Initialize chart data
-        chartData.put("Score", (double) service.getCurrentScore());
+        chartData.put("Total XP", (double) service.getCurrentScore());
         chartData.put("Budget Limit", 10000.0); // Default or mocked if unavailable at startup
         chartData.put("Spent", 0.0);
         chart.setData(chartData);
+                    
         
         insightsArea = new JTextArea();
         insightsArea.setEditable(false);
@@ -45,7 +48,7 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
         splitPane.setBorder(null);
         add(splitPane, BorderLayout.CENTER);
         
-        EventBus.getInstance().subscribe("SCORE_UPDATED", this);
+        EventBus.getInstance().subscribe("XP_UPDATED", this);
         EventBus.getInstance().subscribe("INSIGHT_GENERATED", this);
         EventBus.getInstance().subscribe("BUDGET_UPDATED", this);
         
@@ -63,15 +66,17 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
     @Override
     public void onEvent(NexusEvent event) {
         SwingUtilities.invokeLater(() -> {
-            if ("SCORE_UPDATED".equals(event.getType())) {
+            if ("XP_UPDATED".equals(event.getType())) {
                 Object payload = event.getPayload();
-                scoreLabel.setText("Nexus Score: " + payload);
+                scoreLabel.setText("Nexus XP: " + payload);
                 if (payload instanceof Integer) {
-                    chartData.put("Score", ((Integer) payload).doubleValue());
+                    chartData.put("Total XP", ((Integer) payload).doubleValue());
                     chart.setData(chartData);
+                    
                 } else if (payload instanceof Double) {
-                    chartData.put("Score", (Double) payload);
+                    chartData.put("Total XP", (Double) payload);
                     chart.setData(chartData);
+                    
                 }
             } else if ("BUDGET_UPDATED".equals(event.getType())) {
                 Object payload = event.getPayload();
@@ -80,6 +85,7 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
                     chartData.put("Budget Limit", budget.getTotalBudget());
                     chartData.put("Spent", budget.getCurrentSpent());
                     chart.setData(chartData);
+                    
                 }
             } else if ("INSIGHT_GENERATED".equals(event.getType())) {
                 @SuppressWarnings("unchecked")
@@ -89,3 +95,6 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
         });
     }
 }
+
+
+

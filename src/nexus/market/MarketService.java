@@ -2,20 +2,11 @@ package nexus.market;
 
 import nexus.common.EventBus;
 import nexus.common.NexusEvent;
+import nexus.common.NexusListener;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * The MarketService acts as the 'Controller' or 'Business Logic' layer for its respective module.
- * 
- * In a professional software architecture (like MVC or MVVM), Services are responsible for:
- * 1. Managing data state (holding the lists of items, scores, or configurations).
- * 2. Processing business rules (e.g., verifying if an action is valid).
- * 3. Communicating with other parts of the application (publishing events to the EventBus).
- * 
- * By keeping this logic out of the GUI Panels, the code remains easy to test, maintain, and extend.
- */
-public class MarketService {
+public class MarketService implements NexusListener {
     private List<Product> availableProducts;
     private ShoppingCart cart;
     
@@ -23,10 +14,18 @@ public class MarketService {
         availableProducts = new ArrayList<>();
         cart = new ShoppingCart();
         
-        // Seed some products
         availableProducts.add(new Product("Laptop", 1200.00));
         availableProducts.add(new Product("Mouse", 25.50));
         availableProducts.add(new Product("Keyboard", 75.00));
+        
+        EventBus.getInstance().subscribe("XP_UPDATED", this);
+
+        new Thread(() -> {
+            List<Product> scrapedProducts = nexus.realtime.WebMarketScraper.scrapeMarket("laptop");
+            availableProducts.clear();
+            availableProducts.addAll(scrapedProducts);
+            EventBus.getInstance().publish(new NexusEvent("MARKET_UPDATED", null, "Market"));
+        }).start();
     }
     
     public List<Product> getAvailableProducts() { return availableProducts; }
@@ -49,4 +48,18 @@ public class MarketService {
     }
     
     public ShoppingCart getCart() { return cart; }
+
+    @Override
+    public void onEvent(NexusEvent event) {
+        if ("XP_UPDATED".equals(event.getType())) {
+            int score = (Integer) event.getPayload();
+            double discount = 0.0;
+            if (score >= 5000) discount = 0.15;
+            else if (score >= 1000) discount = 0.05;
+            
+            cart.setDiscountRate(discount);
+            EventBus.getInstance().publish(new NexusEvent("CART_UPDATED", cart, "Market"));
+        }
+    }
 }
+

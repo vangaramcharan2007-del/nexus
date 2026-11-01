@@ -9,69 +9,152 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import nexus.common.EventBus;
 import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
 import nexus.finance.Transaction;
+import nexus.finance.TransactionCategory;
 import nexus.tasks.Task;
 import nexus.tasks.TaskPriority;
 import nexus.goals.Goal;
+import nexus.goals.Milestone;
+import nexus.media.MediaItem;
+import nexus.media.MediaType;
+import nexus.media.MediaStatus;
 
 /**
- * The DatabaseService acts as the central data persistence layer for the NEXUS application.
- * It uses SQLite (via JDBC) to store and retrieve application state locally.
- * 
- * Implementing NexusListener allows this service to silently listen to the EventBus.
- * When other parts of the application fire events (e.g., "TASK_ADDED"), the DatabaseService
- * intercepts these events and automatically commits the changes to the database.
- * This completely decouples the GUI and other Services from SQL logic.
+ * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V7.
+ * Persists Tasks, Transactions, Goals, Milestones, Media Items, and Market Purchases.
  */
 public class DatabaseService implements NexusListener {
-    private static final String URL = "jdbc:sqlite:nexus.db";
+    private static final String URL = "jdbc:sqlite:" + (System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db");
+    
+    private Connection writeConnection;
+    private final ExecutorService dbWriterQueue;
 
     public DatabaseService() {
+        dbWriterQueue = Executors.newSingleThreadExecutor();
         initDatabase();
         EventBus.getInstance().subscribeToAll(this);
+        
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            dbWriterQueue.shutdown();
+            try {
+                if (writeConnection != null && !writeConnection.isClosed()) {
+                    writeConnection.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }));
     }
 
     private void initDatabase() {
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement()) {
+        try {
+            Class.forName("org.sqlite.JDBC");
+            writeConnection = DriverManager.getConnection(URL);
             
-            stmt.execute("CREATE TABLE IF NOT EXISTS tasks (" +
-                         "id TEXT PRIMARY KEY, " +
-                         "title TEXT, " +
-                         "priority TEXT, " +
-                         "completed INTEGER)");
-                         
-            stmt.execute("CREATE TABLE IF NOT EXISTS transactions (" +
-                         "id TEXT PRIMARY KEY, " +
-                         "description TEXT, " +
-                         "amount REAL, " +
-                         "date INTEGER)");
-                         
-            stmt.execute("CREATE TABLE IF NOT EXISTS goals (" +
-                         "id TEXT PRIMARY KEY, " +
-                         "title TEXT)");
-                         
-        } catch (SQLException e) {
+            try (Statement stmt = writeConnection.createStatement()) {
+                // 1. Tasks table
+                stmt.execute("CREATE TABLE IF NOT EXISTS tasks (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "title TEXT, " +
+                             "priority TEXT, " +
+                             "completed INTEGER, " +
+                             "due_date TEXT, " +
+                             "category TEXT)");
+
+                // 2. Transactions table
+                stmt.execute("CREATE TABLE IF NOT EXISTS transactions (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "description TEXT, " +
+                             "amount REAL, " +
+                             "date INTEGER, " +
+                             "category TEXT)");
+                             
+                // 3. Goals table
+                stmt.execute("CREATE TABLE IF NOT EXISTS goals (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "title TEXT, " +
+                             "deadline TEXT, " +
+                             "category TEXT)");
+
+                // 4. Milestones table
+                stmt.execute("CREATE TABLE IF NOT EXISTS milestones (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "goal_id TEXT, " +
+                             "description TEXT, " +
+                             "completed INTEGER)");
+
+                // 5. Media items table
+                stmt.execute("CREATE TABLE IF NOT EXISTS media_items (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "title TEXT, " +
+                             "type TEXT, " +
+                             "status TEXT, " +
+                             "rating INTEGER, " +
+                             "poster_url TEXT, " +
+                             "genres TEXT, " +
+                             "rating_score REAL, " +
+                             "summary TEXT, " +
+                             "year TEXT)");
+
+                // 6. Market purchases
+                stmt.execute("CREATE TABLE IF NOT EXISTS market_purchases (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "product_name TEXT, " +
+                             "price REAL, " +
+                             "timestamp INTEGER)");
+            }
+
+            // Migrations for existing tables (ignore if columns already exist)
+            safelyExecute("ALTER TABLE tasks ADD COLUMN due_date TEXT");
+            safelyExecute("ALTER TABLE tasks ADD COLUMN category TEXT");
+            safelyExecute("ALTER TABLE transactions ADD COLUMN category TEXT");
+            safelyExecute("ALTER TABLE goals ADD COLUMN deadline TEXT");
+            safelyExecute("ALTER TABLE goals ADD COLUMN category TEXT");
+
+        } catch (Exception e) {
+            System.err.println("[DatabaseService] Init error: " + e.getMessage());
             e.printStackTrace();
         }
     }
+
+    private void safelyExecute(String sql) {
+        try (Statement s = writeConnection.createStatement()) {
+            s.execute(sql);
+        } catch (SQLException ignored) {
+            // Column likely already exists
+        }
+    }
     
+    // --- LOAD METHODS ---
+
     public List<Task> loadTasks() {
         List<Task> tasks = new ArrayList<>();
-        String sql = "SELECT id, title, priority, completed FROM tasks";
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement();
+        String sql = "SELECT id, title, priority, completed, due_date, category FROM tasks";
+        try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                String pStr = rs.getString("priority");
+                TaskPriority prio = TaskPriority.MEDIUM;
+                try {
+                    prio = TaskPriority.valueOf(pStr);
+                } catch (Exception ignored) {}
+
+                String due = rs.getString("due_date");
+                String cat = rs.getString("category");
+
                 Task t = new Task(
                     rs.getString("id"),
                     rs.getString("title"),
-                    TaskPriority.valueOf(rs.getString("priority")),
-                    rs.getInt("completed") == 1
+                    prio,
+                    rs.getInt("completed") == 1,
+                    cat != null ? cat : "General",
+                    due != null ? due : "Today"
                 );
                 tasks.add(t);
             }
@@ -83,16 +166,26 @@ public class DatabaseService implements NexusListener {
     
     public List<Transaction> loadTransactions() {
         List<Transaction> transactions = new ArrayList<>();
-        String sql = "SELECT id, description, amount, date FROM transactions";
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement();
+        String sql = "SELECT id, description, amount, date, category FROM transactions ORDER BY date DESC";
+        try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                String catStr = rs.getString("category");
+                TransactionCategory cat = TransactionCategory.OTHER;
+                if (catStr != null) {
+                    try {
+                        cat = TransactionCategory.valueOf(catStr);
+                    } catch (Exception ex) {
+                        cat = TransactionCategory.OTHER;
+                    }
+                }
+
                 Transaction t = new Transaction(
                     rs.getString("id"),
                     rs.getString("description"),
                     rs.getDouble("amount"),
-                    new Date(rs.getLong("date"))
+                    new Date(rs.getLong("date")),
+                    cat
                 );
                 transactions.add(t);
             }
@@ -102,50 +195,215 @@ public class DatabaseService implements NexusListener {
         return transactions;
     }
 
-    /**
-     * This method is triggered automatically whenever an event is published to the EventBus.
-     * The DatabaseService listens to everything, but only reacts to events it cares about
-     * (like saving tasks or transactions).
-     */
+    public List<Goal> loadGoals() {
+        List<Goal> goals = new ArrayList<>();
+        String sql = "SELECT id, title, deadline, category FROM goals";
+        try (Statement stmt = writeConnection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String gId = rs.getString("id");
+                String title = rs.getString("title");
+                String deadline = rs.getString("deadline");
+                String category = rs.getString("category");
+
+                List<Milestone> milestones = loadMilestonesForGoal(gId);
+                Goal g = new Goal(gId, title, category, deadline, milestones);
+                goals.add(g);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return goals;
+    }
+
+    private List<Milestone> loadMilestonesForGoal(String goalId) {
+        List<Milestone> list = new ArrayList<>();
+        String sql = "SELECT id, description, completed FROM milestones WHERE goal_id = ?";
+        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+            pstmt.setString(1, goalId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new Milestone(
+                        rs.getString("id"),
+                        rs.getString("description"),
+                        rs.getInt("completed") == 1
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<MediaItem> loadMedia() {
+        List<MediaItem> mediaList = new ArrayList<>();
+        String sql = "SELECT id, title, type, status, rating, poster_url, genres, rating_score, summary, year FROM media_items";
+        try (Statement stmt = writeConnection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                MediaType type = MediaType.MOVIE;
+                try {
+                    type = MediaType.valueOf(rs.getString("type"));
+                } catch (Exception ignored) {}
+
+                MediaStatus status = MediaStatus.WANT_TO_CONSUME;
+                try {
+                    status = MediaStatus.valueOf(rs.getString("status"));
+                } catch (Exception ignored) {}
+
+                MediaItem item = new MediaItem(
+                    rs.getString("id"),
+                    rs.getString("title"),
+                    type,
+                    status,
+                    rs.getInt("rating"),
+                    rs.getString("poster_url"),
+                    rs.getString("genres"),
+                    rs.getDouble("rating_score"),
+                    rs.getString("summary"),
+                    rs.getString("year")
+                );
+                mediaList.add(item);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return mediaList;
+    }
+
+    // --- ASYNC EVENT LISTENER & WRITER ---
+
     @Override
     public void onEvent(NexusEvent event) {
         String type = event.getType();
         Object payload = event.getPayload();
         
-        try (Connection conn = DriverManager.getConnection(URL)) {
-            if ("TASK_ADDED".equals(type) && payload instanceof Task) {
-                Task t = (Task) payload;
-                // PreparedStatement prevents SQL Injection attacks and safely parses objects into SQL data types.
-                String sql = "INSERT INTO tasks(id, title, priority, completed) VALUES(?, ?, ?, ?)";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, t.getId());
-                    pstmt.setString(2, t.getTitle());
-                    pstmt.setString(3, t.getPriority().name());
-                    pstmt.setInt(4, t.isCompleted() ? 1 : 0);
-                    pstmt.executeUpdate();
+        dbWriterQueue.submit(() -> {
+            try {
+                // TASK EVENTS
+                if ("TASK_ADDED".equals(type) && payload instanceof Task) {
+                    Task t = (Task) payload;
+                    String sql = "INSERT OR REPLACE INTO tasks(id, title, priority, completed, due_date, category) VALUES(?, ?, ?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, t.getId());
+                        pstmt.setString(2, t.getTitle());
+                        pstmt.setString(3, t.getPriority().name());
+                        pstmt.setInt(4, t.isCompleted() ? 1 : 0);
+                        pstmt.setString(5, t.getDueDate());
+                        pstmt.setString(6, t.getCategory());
+                        pstmt.executeUpdate();
+                    }
+                } else if ("TASK_COMPLETED".equals(type) && payload instanceof Task) {
+                    Task t = (Task) payload;
+                    String sql = "UPDATE tasks SET completed = 1 WHERE id = ?";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, t.getId());
+                        pstmt.executeUpdate();
+                    }
+                } else if ("TASK_DELETED".equals(type) && payload instanceof Task) {
+                    Task t = (Task) payload;
+                    String sql = "DELETE FROM tasks WHERE id = ?";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, t.getId());
+                        pstmt.executeUpdate();
+                    }
+                } 
+                // TRANSACTION EVENTS
+                else if ("TRANSACTION_ADDED".equals(type) && payload instanceof Transaction) {
+                    Transaction t = (Transaction) payload;
+                    String sql = "INSERT OR REPLACE INTO transactions(id, description, amount, date, category) VALUES(?, ?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, t.getId());
+                        pstmt.setString(2, t.getDescription());
+                        pstmt.setDouble(3, t.getAmount());
+                        pstmt.setLong(4, t.getDate().getTime());
+                        pstmt.setString(5, t.getCategory() != null ? t.getCategory().name() : "OTHER");
+                        pstmt.executeUpdate();
+                    }
                 }
-            } else if ("TASK_COMPLETED".equals(type) && payload instanceof Task) {
-                Task t = (Task) payload;
-                String sql = "UPDATE tasks SET completed = 1 WHERE id = ?";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, t.getId());
-                    pstmt.executeUpdate();
+                // GOAL & MILESTONE EVENTS
+                else if ("GOAL_ADDED".equals(type) && payload instanceof Goal) {
+                    Goal g = (Goal) payload;
+                    String sql = "INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, g.getId());
+                        pstmt.setString(2, g.getTitle());
+                        pstmt.setString(3, g.getDeadline());
+                        pstmt.setString(4, g.getCategory());
+                        pstmt.executeUpdate();
+                    }
+                } else if ("GOAL_DELETED".equals(type) && payload instanceof Goal) {
+                    Goal g = (Goal) payload;
+                    try (PreparedStatement p1 = writeConnection.prepareStatement("DELETE FROM milestones WHERE goal_id = ?");
+                         PreparedStatement p2 = writeConnection.prepareStatement("DELETE FROM goals WHERE id = ?")) {
+                        p1.setString(1, g.getId());
+                        p1.executeUpdate();
+                        p2.setString(1, g.getId());
+                        p2.executeUpdate();
+                    }
+                } else if ("GOALS_UPDATED".equals(type) && payload instanceof List) {
+                    @SuppressWarnings("unchecked")
+                    List<Goal> goals = (List<Goal>) payload;
+                    for (Goal g : goals) {
+                        try (PreparedStatement pGoal = writeConnection.prepareStatement("INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)")) {
+                            pGoal.setString(1, g.getId());
+                            pGoal.setString(2, g.getTitle());
+                            pGoal.setString(3, g.getDeadline());
+                            pGoal.setString(4, g.getCategory());
+                            pGoal.executeUpdate();
+                        }
+                        for (Milestone m : g.getMilestones()) {
+                            try (PreparedStatement pMs = writeConnection.prepareStatement("INSERT OR REPLACE INTO milestones(id, goal_id, description, completed) VALUES(?, ?, ?, ?)")) {
+                                pMs.setString(1, m.getId());
+                                pMs.setString(2, g.getId());
+                                pMs.setString(3, m.getDescription());
+                                pMs.setInt(4, m.isCompleted() ? 1 : 0);
+                                pMs.executeUpdate();
+                            }
+                        }
+                    }
                 }
-            } else if ("TRANSACTION_ADDED".equals(type) && payload instanceof Transaction) {
-                Transaction t = (Transaction) payload;
-                String sql = "INSERT INTO transactions(id, description, amount, date) VALUES(?, ?, ?, ?)";
-                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                    pstmt.setString(1, t.getId());
-                    pstmt.setString(2, t.getDescription());
-                    pstmt.setDouble(3, t.getAmount());
-                    pstmt.setLong(4, t.getDate().getTime());
-                    pstmt.executeUpdate();
+                // MEDIA EVENTS
+                else if (("MEDIA_ADDED".equals(type) || "MEDIA_STATUS_CHANGED".equals(type) || "MEDIA_RATED".equals(type)) && payload instanceof MediaItem) {
+                    MediaItem item = (MediaItem) payload;
+                    String sql = "INSERT OR REPLACE INTO media_items(id, title, type, status, rating, poster_url, genres, rating_score, summary, year) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, item.getId());
+                        pstmt.setString(2, item.getTitle());
+                        pstmt.setString(3, item.getType().name());
+                        pstmt.setString(4, item.getStatus().name());
+                        pstmt.setInt(5, item.getRating());
+                        pstmt.setString(6, item.getPosterUrl());
+                        pstmt.setString(7, item.getGenres());
+                        pstmt.setDouble(8, item.getRatingScore());
+                        pstmt.setString(9, item.getSummary());
+                        pstmt.setString(10, item.getYear());
+                        pstmt.executeUpdate();
+                    }
+                } else if ("MEDIA_DELETED".equals(type) && payload instanceof MediaItem) {
+                    MediaItem item = (MediaItem) payload;
+                    String sql = "DELETE FROM media_items WHERE id = ?";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, item.getId());
+                        pstmt.executeUpdate();
+                    }
                 }
-            } else if ("GOAL_COMPLETED".equals(type) && payload instanceof Goal) {
-                // Not requested to save fully, just showing listener implementation
+                // MARKET PURCHASES
+                else if ("PRODUCT_PURCHASED".equals(type)) {
+                    double price = payload instanceof Double ? (Double) payload : 0.0;
+                    String sql = "INSERT INTO market_purchases(id, product_name, price, timestamp) VALUES(?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, nexus.common.IdGenerator.generateId());
+                        pstmt.setString(2, "Market Order");
+                        pstmt.setDouble(3, price);
+                        pstmt.setLong(4, System.currentTimeMillis());
+                        pstmt.executeUpdate();
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("[DatabaseService] Background Write Error: " + e.getMessage());
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        });
     }
 }
