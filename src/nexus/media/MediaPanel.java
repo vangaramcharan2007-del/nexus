@@ -525,11 +525,31 @@ public class MediaPanel extends JPanel implements NexusListener {
         centerPanel.add(new JScrollPane(info), BorderLayout.CENTER);
         p.add(centerPanel, BorderLayout.CENTER);
 
-        JButton close = new JButton("Close & Save to Passbook");
+        JPanel btm = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btm.setOpaque(false);
+
+        JButton mobilePassBtn = new JButton("📱 Open Dynamic 15s QR Pass (P9)");
+        mobilePassBtn.setBackground(new Color(59, 130, 246));
+        mobilePassBtn.setForeground(Color.WHITE);
+        mobilePassBtn.addActionListener(e -> {
+            nexus.auth.UserProfile prof = nexus.auth.AccountService.getInstance().getCurrentProfile();
+            nexus.mobile.MobilePassService.getInstance().updateActiveBooking(
+                    b.getId(), b.getMovieTitle(), b.getSeatsFormatted(),
+                    prof != null ? prof.getName() : "Ram Charan Vanga",
+                    prof != null ? prof.getRegNo() : "RA2511027010164"
+            );
+            dlg.dispose();
+            EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "Mobile QR Pass (P9)", "Media"));
+        });
+
+        JButton close = new JButton("Close Pass");
         close.setBackground(new Color(16, 185, 129));
         close.setForeground(Color.WHITE);
         close.addActionListener(e -> dlg.dispose());
-        p.add(close, BorderLayout.SOUTH);
+
+        btm.add(mobilePassBtn);
+        btm.add(close);
+        p.add(btm, BorderLayout.SOUTH);
 
         dlg.setContentPane(p);
         dlg.setVisible(true);

@@ -97,12 +97,18 @@ public class NexusApplication extends JFrame {
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 12));
         
         tabbedPane.addTab("Dashboard", new DashboardPanel(dashboardService));
-        tabbedPane.addTab("Finance & Calculators", new FinancePanel(financeService));
+        tabbedPane.addTab("Finance", new FinancePanel(financeService));
         tabbedPane.addTab("Cinema & Box Office", new MediaPanel(mediaService));
         tabbedPane.addTab("Live Market", new MarketPanel(marketService));
         tabbedPane.addTab("Tasks", new TaskPanel(taskService));
         tabbedPane.addTab("Strategic Goals", new GoalPanel(goalService));
         tabbedPane.addTab("Analytics", new AnalyticsPanel(analyticsService));
+
+        // Advanced Enterprise Suite (Phases 8, 9, 10, 12)
+        tabbedPane.addTab("Cloud Mesh (P8)", new nexus.cloud.CloudMeshPanel());
+        tabbedPane.addTab("Mobile QR Pass (P9)", new nexus.mobile.MobilePassPanel());
+        tabbedPane.addTab("AI Copilot (P10)", new nexus.copilot.AiCopilotPanel());
+        tabbedPane.addTab("Web3 & ZK-ID (P12)", new nexus.web3.Web3ProtocolPanel());
         
         // Setup CardLayout with Login
         CardLayout cardLayout = new CardLayout();
