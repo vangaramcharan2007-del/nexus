@@ -45,7 +45,7 @@ public class FinancePanel extends JPanel implements NexusListener {
         topContainer.add(Box.createVerticalStrut(8));
         topContainer.add(createAutomatedKpiPanel());
         topContainer.add(Box.createVerticalStrut(8));
-        topContainer.add(createAiCopilotBanner());
+        topContainer.add(createPredictiveEngineBanner());
         topContainer.add(Box.createVerticalStrut(8));
         topContainer.add(createProgressBarPanel());
 
@@ -139,13 +139,13 @@ public class FinancePanel extends JPanel implements NexusListener {
         JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         rightActions.setOpaque(false);
 
-        JButton copilotBtn = new JButton("🧠 AI Copilot (P10)");
+        JButton copilotBtn = new JButton("📈 Quantitative Engine (P10)");
         copilotBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         copilotBtn.setBackground(new Color(16, 185, 129));
         copilotBtn.setForeground(Color.WHITE);
         copilotBtn.setFocusPainted(false);
         copilotBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        copilotBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "AI Copilot (P10)", "Finance")));
+        copilotBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "Quantitative", "Finance")));
 
         rightActions.add(copilotBtn);
         rightActions.add(refreshBtn);
@@ -178,7 +178,7 @@ public class FinancePanel extends JPanel implements NexusListener {
         return panel;
     }
 
-    private JPanel createAiCopilotBanner() {
+    private JPanel createPredictiveEngineBanner() {
         JPanel bar = new JPanel(new BorderLayout(10, 0));
         bar.setBackground(new Color(24, 30, 42));
         bar.setBorder(BorderFactory.createCompoundBorder(
@@ -186,7 +186,7 @@ public class FinancePanel extends JPanel implements NexusListener {
                 BorderFactory.createEmptyBorder(6, 14, 6, 14)
         ));
 
-        JLabel title = new JLabel("💡 AI Financial Copilot:");
+        JLabel title = new JLabel("💡 Predictive Financial Engine:");
         title.setFont(new Font("Segoe UI", Font.BOLD, 12));
         title.setForeground(new Color(52, 211, 153));
 
@@ -194,13 +194,13 @@ public class FinancePanel extends JPanel implements NexusListener {
         text.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         text.setForeground(new Color(203, 213, 225));
 
-        JButton askBtn = new JButton("Open AI Copilot Advisor ⚡");
+        JButton askBtn = new JButton("Open Campus Strategy Advisor ⚡");
         askBtn.setFont(new Font("Segoe UI", Font.BOLD, 10));
         askBtn.setBackground(new Color(16, 185, 129));
         askBtn.setForeground(Color.WHITE);
         askBtn.setFocusPainted(false);
         askBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        askBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "AI Copilot (P10)", "Finance")));
+        askBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("OPEN_AI_ASSISTANT", null, "Finance")));
 
         bar.add(title, BorderLayout.WEST);
         bar.add(text, BorderLayout.CENTER);

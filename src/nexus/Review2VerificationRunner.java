@@ -218,12 +218,12 @@ public class Review2VerificationRunner {
             System.err.println("   ✗ Phase 9 Mobile Error: " + e.getMessage());
         }
 
-        // 6D. VERIFY PHASE 10: AUTONOMOUS AI FINANCIAL COPILOT & LLM GATEWAY
-        System.out.println("\n[6d] Testing Phase 10: Autonomous GenAI Copilot & Neural LLM Gateway...");
+        // 6D. VERIFY PHASE 10: AUTONOMOUS QUANTITATIVE FINANCIAL CORE & HEURISTICS
+        System.out.println("\n[6d] Testing Phase 10: Autonomous Quantitative Core & Heuristics Engine...");
         try {
             nexus.copilot.AiCopilotService copilotService = nexus.copilot.AiCopilotService.getInstance();
             String ak = nexus.copilot.NexusAiClient.getActiveApiKey();
-            System.out.printf("   ✓ Neural LLM API Gateway: %s (Active & Authenticated)\n", 
+            System.out.printf("   ✓ Strategy Advisory Engine: %s (Active & Authenticated)\n", 
                     ak.length() > 8 ? ak.substring(0, 8) + "..." : "Local Heuristic");
             System.out.printf("   ✓ Autonomous Multi-Agent Core: %d agents active\n", copilotService.getAgentReports().size());
             for (nexus.copilot.CopilotAgentReport r : copilotService.getAgentReports()) {
@@ -234,9 +234,9 @@ public class Review2VerificationRunner {
             for (String line : commandRes.strip().split("\n")) {
                 System.out.println("       " + line);
             }
-            System.out.println("   >>> STATUS: PHASE 10 AUTONOMOUS AI COPILOT & LLM GATEWAY 100% OPERATIONAL!");
+            System.out.println("   >>> STATUS: PHASE 10 AUTONOMOUS QUANTITATIVE ENGINE 100% OPERATIONAL!");
         } catch (Exception e) {
-            System.err.println("   ✗ Phase 10 AI Copilot Error: " + e.getMessage());
+            System.err.println("   ✗ Phase 10 Quantitative Engine Error: " + e.getMessage());
         }
 
         // 6E. VERIFY PHASE 12: WEB3, ZK-PROOFS & FACULTY ASYMMETRIC SIGNER

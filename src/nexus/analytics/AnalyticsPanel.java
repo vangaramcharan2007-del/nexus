@@ -86,7 +86,7 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
 
         chartsGrid.add(pieChart);
 
-        // 3. BOTTOM SECTION: AI PREDICTIVE ANOMALY & INSIGHTS FEED
+        // 3. BOTTOM SECTION: PREDICTIVE ANOMALY & INSIGHTS FEED
         JPanel bottomSection = new JPanel(new BorderLayout(8, 6));
         bottomSection.setBackground(new Color(24, 30, 42));
         bottomSection.setBorder(BorderFactory.createCompoundBorder(
@@ -99,11 +99,11 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
         JPanel headerBar = new JPanel(new BorderLayout(10, 0));
         headerBar.setOpaque(false);
 
-        JLabel feedTitle = new JLabel("🧠 AI PREDICTIVE ANOMALY DETECTION & EXECUTIVE AUDIT STREAM");
+        JLabel feedTitle = new JLabel("📊 AUTOMATED PREDICTIVE ANOMALY DETECTION & AUDIT STREAM");
         feedTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         feedTitle.setForeground(new Color(56, 189, 248));
 
-        JButton diagBtn = new JButton("⚡ Run AI Deep Diagnostics");
+        JButton diagBtn = new JButton("⚡ Run System Diagnostics");
         diagBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         diagBtn.setBackground(new Color(59, 130, 246));
         diagBtn.setForeground(Color.WHITE);

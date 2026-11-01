@@ -22,7 +22,7 @@ public class CloudMeshService implements NexusListener {
         services.add(new CloudServiceInfo("Double-Entry Ledger Service", 8082, "gRPC (HTTP/2)", "UP", 8, 99.99));
         services.add(new CloudServiceInfo("Amazon Gateway Scraper Pool", 8083, "Jsoup Worker", "UP", 45, 99.95));
         services.add(new CloudServiceInfo("BookMyShow Redis Lock Service", 8084, "Redis Redlock", "UP", 4, 100.00));
-        services.add(new CloudServiceInfo("Predictive AI Telemetry Service", 8085, "WebSocket/SSE", "UP", 18, 99.94));
+        services.add(new CloudServiceInfo("Predictive Heuristic Telemetry Service", 8085, "WebSocket/SSE", "UP", 18, 99.94));
 
         // Seed initial Kafka messages
         publishKafka("nexus.orders.placed", "USER-01", "{\"orderId\":\"AMZ-IN-849204\",\"amount\":998.80,\"dest\":\"Kaveri 402\"}");

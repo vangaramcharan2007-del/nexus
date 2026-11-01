@@ -8,7 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
- * Interactive AI Assistant Dialog - Real-Time Campus & Financial Copilot.
+ * Interactive Strategy Advisor Dialog - Real-Time Campus & Financial Optimization.
  * 
  * Author: Ram Charan Vanga (Reg No: RA2511027010164)
  * Department of Computer Science & Engineering
@@ -22,7 +22,7 @@ public class AiAssistantDialog extends JDialog {
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
 
     public AiAssistantDialog(Frame owner) {
-        super(owner, "✨ NEXUS AI Campus Copilot - SRM Edition", false);
+        super(owner, "⚡ NEXUS Campus Strategy Advisor - SRM Edition", false);
         setSize(680, 560);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(0, 0));
@@ -38,11 +38,11 @@ public class AiAssistantDialog extends JDialog {
         JPanel headerBar = new JPanel(new BorderLayout());
         headerBar.setOpaque(false);
 
-        JLabel titleLabel = new JLabel("🤖 SRM CAMPUS AI COPILOT & FINANCIAL ADVISOR");
+        JLabel titleLabel = new JLabel("💡 SRM CAMPUS STRATEGY & FINANCIAL ADVISOR");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         titleLabel.setForeground(new Color(56, 189, 248));
 
-        statusLabel = new JLabel("● AI Engine: Online (Latency ~1.2s)");
+        statusLabel = new JLabel("● Advisory Core: Online (Latency ~1.2s)");
         statusLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
         statusLabel.setForeground(new Color(52, 211, 153));
 
@@ -55,7 +55,7 @@ public class AiAssistantDialog extends JDialog {
         chipsPanel.setOpaque(false);
 
         chipsPanel.add(createChip("💡 SRM Student Budget Plan", "Give me a practical monthly budget strategy for a student living in Kaveri Hostel SRM with 10k allowance."));
-        chipsPanel.add(createChip("🎬 Weekend Movie Picks", "What are the best movies to watch this weekend near SRM Kattankulathur with student discounts?"));
+        chipsPanel.add(createChip("🎬 Weekend Movie Deals", "What are the best movies to watch this weekend near SRM Kattankulathur with student discounts?"));
         chipsPanel.add(createChip("📈 SIP Compound Calculator", "If I invest ₹1,500/month in a student SIP at 13% CAGR, what will it be worth in 4 years?"));
         chipsPanel.add(createChip("⚡ Outflow Optimization", "How can I cut my daily canteen and swiggy spending without sacrificing nutrition?"));
 
@@ -74,9 +74,9 @@ public class AiAssistantDialog extends JDialog {
 
         // Initial welcome message
         conversationArea.setText("""
-                🤖 [NEXUS AI COPILOT INITIALIZED]
-                Welcome to your SRM Campus & Financial Intelligence Assistant.
-                Ask me anything about budgeting, hostel expenses, movie bookings, or investment planning:
+                💡 [NEXUS SMART ADVISORY CORE ONLINE]
+                Welcome to your SRM Campus & Financial Optimization Assistant.
+                Select an optimization strategy above or enter any campus/financial question:
                 --------------------------------------------------------------------------------------
                 """);
 
@@ -109,7 +109,7 @@ public class AiAssistantDialog extends JDialog {
             }
         });
 
-        sendButton = new JButton("Ask AI ✨");
+        sendButton = new JButton("Consult Advisor ⚡");
         sendButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
         sendButton.setBackground(new Color(16, 185, 129));
         sendButton.setForeground(Color.WHITE);
@@ -149,34 +149,34 @@ public class AiAssistantDialog extends JDialog {
         inputField.setText("");
         inputField.setEnabled(false);
         sendButton.setEnabled(false);
-        statusLabel.setText("● AI Engine: Reasoning...");
+        statusLabel.setText("● Advisory Core: Optimizing...");
         statusLabel.setForeground(new Color(251, 191, 36));
 
         String time = timeFormat.format(new Date());
         conversationArea.append(String.format("\n\n[%s] 👤 You:\n%s\n", time, query));
-        conversationArea.append("\n🤖 NEXUS Copilot: [Analyzing...]\n");
+        conversationArea.append("\n💡 NEXUS Advisor: [Calculating strategy...]\n");
         conversationArea.setCaretPosition(conversationArea.getDocument().getLength());
 
         // Background worker execution
         new Thread(() -> {
-            String context = "You are the NEXUS AI Campus Copilot for Ram Charan Vanga (SRM University student). " +
+            String context = "You are the NEXUS Campus Strategy & Financial Advisor for Ram Charan Vanga (SRM University student). " +
                              "Provide crisp, expert, encouraging advice for campus life, finance, cinema, and productivity in clean bullet points.";
             String answer = NexusAiClient.queryAi(query, context);
 
             SwingUtilities.invokeLater(() -> {
-                // Remove the "[Analyzing...]" placeholder
+                // Remove the "[Calculating strategy...]" placeholder
                 String current = conversationArea.getText();
-                int idx = current.lastIndexOf("🤖 NEXUS Copilot: [Analyzing...]");
+                int idx = current.lastIndexOf("💡 NEXUS Advisor: [Calculating strategy...]");
                 if (idx != -1) {
                     conversationArea.setText(current.substring(0, idx));
                 }
-                conversationArea.append("🤖 NEXUS Copilot:\n" + answer.trim() + "\n");
+                conversationArea.append("💡 NEXUS Advisor:\n" + answer.trim() + "\n");
                 conversationArea.setCaretPosition(conversationArea.getDocument().getLength());
 
                 inputField.setEnabled(true);
                 sendButton.setEnabled(true);
                 inputField.requestFocusInWindow();
-                statusLabel.setText("● AI Engine: Online (Ready)");
+                statusLabel.setText("● Advisory Core: Online (Ready)");
                 statusLabel.setForeground(new Color(52, 211, 153));
             });
         }).start();

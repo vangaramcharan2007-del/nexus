@@ -27,7 +27,7 @@ public class AiCopilotPanel extends JPanel {
                 BorderFactory.createEmptyBorder(8, 14, 8, 14)
         ));
 
-        JLabel title = new JLabel("🧠 AUTONOMOUS GENAI FINANCIAL COPILOT & PREDICTIVE CORE (PHASE 10)");
+        JLabel title = new JLabel("📈 AUTONOMOUS QUANTITATIVE FINANCIAL CORE & LSTM ENGINE (PHASE 10)");
         title.setFont(new Font("Consolas", Font.BOLD, 15));
         title.setForeground(new Color(56, 189, 248));
 
@@ -157,7 +157,7 @@ public class AiCopilotPanel extends JPanel {
         commandOutputArea.setBackground(new Color(10, 15, 30));
         commandOutputArea.setForeground(new Color(0, 255, 200));
         commandOutputArea.setText("""
-                [NEXUS GENAI FINANCIAL COPILOT ONLINE]
+                [NEXUS QUANTITATIVE FINANCIAL CORE ONLINE]
                 Autonomous agents initialized. 0 manual input needed.
                 Click any suggestion chip above or enter an instruction below:
                 --------------------------------------------------------------
@@ -229,7 +229,7 @@ public class AiCopilotPanel extends JPanel {
     private void executeCommand(String cmd) {
         if (cmd.isEmpty()) return;
         commandInput.setText("");
-        commandOutputArea.append("\n> " + cmd + "\n[AI Copilot Thinking... Querying neural reasoning engine...]\n");
+        commandOutputArea.append("\n> " + cmd + "\n[Processing quantitative optimization heuristics...]\n");
         commandOutputArea.setCaretPosition(commandOutputArea.getDocument().getLength());
 
         new Thread(() -> {

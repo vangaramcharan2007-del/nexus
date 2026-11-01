@@ -24,7 +24,7 @@ public class AnalyticsService implements NexusListener {
     }
 
     private void seedInitialInsights() {
-        insights.add(new Insight("AI Executive Core initialized in high-precision mode.", Insight.Level.INFO));
+        insights.add(new Insight("Executive Analytics Core initialized in high-precision mode.", Insight.Level.INFO));
         insights.add(new Insight("Passive compound growth projection activated: +$631.50/yr expected.", Insight.Level.SUCCESS));
         insights.add(new Insight("SRM Student Discount verified on cinema bookings (25% capital saved).", Insight.Level.REWARD));
         insights.add(new Insight("Optimal budget runway detected: >280 days operational buffer.", Insight.Level.SUCCESS));
@@ -45,11 +45,11 @@ public class AnalyticsService implements NexusListener {
         new Thread(() -> {
             String aiForecast = nexus.copilot.NexusAiClient.queryAi(
                     "Give a 1-sentence predictive forecast on student budget solvency and savings advice for SRM University student.",
-                    "You are NEXUS AI Intelligence. One punchy, reassuring sentence."
+                    "You are NEXUS Quantitative Student Intelligence. One punchy, reassuring sentence."
             );
             if (aiForecast != null && !aiForecast.isBlank()) {
                 javax.swing.SwingUtilities.invokeLater(() -> {
-                    generateInsight("🧠 AI Predictive Forecast: " + aiForecast.trim(), Insight.Level.REWARD);
+                    generateInsight("📈 Predictive Financial Forecast: " + aiForecast.trim(), Insight.Level.REWARD);
                 });
             }
         }).start();

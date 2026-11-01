@@ -172,7 +172,7 @@ public class NexusApplication extends JFrame {
                         showExaminerAuditDialog(0);
                     } else if (targetTab.contains("Mobile") || targetTab.contains("P9")) {
                         showExaminerAuditDialog(1);
-                    } else if (targetTab.contains("Copilot") || targetTab.contains("P10")) {
+                    } else if (targetTab.contains("Copilot") || targetTab.contains("Quantitative") || targetTab.contains("P10")) {
                         showExaminerAuditDialog(2);
                     } else if (targetTab.contains("Web3") || targetTab.contains("P12")) {
                         showExaminerAuditDialog(3);
@@ -276,7 +276,7 @@ public class NexusApplication extends JFrame {
             }
         });
 
-        JButton aiBtn = new JButton("✨ AI Copilot");
+        JButton aiBtn = new JButton("⚡ Smart Campus Advisor");
         aiBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         aiBtn.setBackground(new Color(16, 185, 129));
         aiBtn.setForeground(Color.WHITE);
@@ -318,7 +318,7 @@ public class NexusApplication extends JFrame {
         auditTabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
         auditTabs.addTab("⚡ Cloud Microservices & Kafka Mesh (Phase 8)", new nexus.cloud.CloudMeshPanel());
         auditTabs.addTab("📱 Mobile 15s Dynamic QR Engine (Phase 9)", new nexus.mobile.MobilePassPanel());
-        auditTabs.addTab("🧠 Autonomous AI Copilot & LSTM (Phase 10)", new nexus.copilot.AiCopilotPanel());
+        auditTabs.addTab("📈 Autonomous Quantitative Engine & LSTM (Phase 10)", new nexus.copilot.AiCopilotPanel());
         auditTabs.addTab("🌐 Web3 zk-SNARK & Grade Signer (Phase 12)", new nexus.web3.Web3ProtocolPanel());
 
         if (initialSubtab >= 0 && initialSubtab < auditTabs.getTabCount()) {

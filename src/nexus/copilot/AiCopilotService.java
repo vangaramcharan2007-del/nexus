@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Autonomous AI Copilot Service - Brain Core for Student Intelligence.
+ * Autonomous Strategy Service - Brain Core for Student Intelligence.
  * 
  * Author: Ram Charan Vanga (Reg No: RA2511027010164)
  * Department of Computer Science & Engineering
@@ -77,17 +77,17 @@ public class AiCopilotService implements NexusListener {
         if (command == null || command.isBlank()) return "Please enter a valid command or query.";
         
         String context = String.format(
-                "You are NEXUS AI Copilot, developed by Ram Charan Vanga (RA2511027010164) for SRM University students. " +
+                "You are NEXUS Quantitative Student Advisor, developed by Ram Charan Vanga (RA2511027010164) for SRM University students. " +
                 "Live Financial State: Balance=$%.2f, DailyBurn=$%.2f/day, SafeAllowance=$%.2f/day, Runway=%d days. " +
                 "Respond in clear, concise bullet points with actionable student advice and numbers.",
                 currentBalance, dailyBurnRate, safeDailyLimit, cashRunwayDays
         );
 
-        // Attempt live LLM reasoning via NexusAiClient
+        // Attempt live algorithmic reasoning via NexusAiClient
         String aiResponse = NexusAiClient.queryAi(command, context);
         if (aiResponse != null && !aiResponse.isBlank()) {
             return String.format("""
-                    [NEXUS NEURAL COPILOT INTELLIGENCE]
+                    [NEXUS ALGORITHMIC ADVISORY REPORT]
                     ----------------------------------------------------
                     %s
                     ----------------------------------------------------

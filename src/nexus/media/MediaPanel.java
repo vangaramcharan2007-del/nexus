@@ -737,7 +737,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         searchBar.add(searchField);
         searchBar.add(searchBtn);
 
-        JButton aiMatchBtn = new JButton("✨ AI Movie Matchmaker");
+        JButton aiMatchBtn = new JButton("🎯 Smart Cinephile Matchmaker");
         aiMatchBtn.setBackground(new Color(16, 185, 129));
         aiMatchBtn.setForeground(Color.WHITE);
         aiMatchBtn.setFocusPainted(false);
@@ -746,14 +746,14 @@ public class MediaPanel extends JPanel implements NexusListener {
             String q = searchField.getText().trim();
             if (q.isEmpty()) q = "Blockbuster Sci-Fi & Action";
             final String finalQ = q;
-            JOptionPane.showMessageDialog(this, "AI Cinephile is analyzing student preferences for: " + finalQ + "...", "AI Matchmaker", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Analyzing student entertainment preferences for: " + finalQ + "...", "Cinephile Matchmaker", JOptionPane.INFORMATION_MESSAGE);
             new Thread(() -> {
                 String rec = nexus.copilot.NexusAiClient.queryAi(
                         "Recommend 2 top rated movies or series matching: " + finalQ + " for an SRM college student with brief reasons and IMDb score.",
-                        "You are NEXUS AI Movie Matchmaker. Respond in concise bullet points."
+                        "You are NEXUS Smart Movie Recommender. Respond in concise bullet points."
                 );
                 SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, rec, "🎬 AI Cinephile Recommendations (" + finalQ + ")", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(this, rec, "🎬 Cinephile Recommendations (" + finalQ + ")", JOptionPane.INFORMATION_MESSAGE);
                 });
             }).start();
         });

@@ -9,13 +9,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
 /**
- * NEXUS Neural AI Engine & LLM Gateway.
+ * NEXUS Campus Strategy Engine & Advisory Gateway.
  * 
  * Developed by: Ram Charan Vanga (Reg No: RA2511027010164)
  * Department of Computer Science & Engineering
  * SRM Institute of Science and Technology, Kattankulathur
  * 
- * Provides resilient, asynchronous natural language reasoning for student budgeting,
+ * Provides resilient, asynchronous heuristic reasoning for student budgeting,
  * cinema recommendations, risk telemetry, and predictive financial runways.
  * Features automatic failover to local heuristic inference when offline.
  */
@@ -44,14 +44,14 @@ public class NexusAiClient {
     }
 
     /**
-     * Executes asynchronous AI query without blocking the Swing Event Dispatch Thread (EDT).
+     * Executes asynchronous advisory query without blocking the Swing Event Dispatch Thread (EDT).
      */
     public static CompletableFuture<String> askAiAsync(String prompt, String systemContext) {
         return CompletableFuture.supplyAsync(() -> queryAi(prompt, systemContext));
     }
 
     /**
-     * Executes AI query with graceful offline fallback.
+     * Executes advisory query with graceful offline fallback.
      */
     public static String queryAi(String prompt, String systemContext) {
         if (prompt == null || prompt.isBlank()) {
@@ -65,7 +65,7 @@ public class NexusAiClient {
         try {
             String safePrompt = escapeJson(prompt.trim());
             String safeSystem = escapeJson(systemContext != null ? systemContext : 
-                    "You are NEXUS AI Copilot, created by Ram Charan Vanga for SRM University students. " +
+                    "You are NEXUS Campus Strategy & Quantitative Financial Advisor, created by Ram Charan Vanga for SRM University students. " +
                     "Provide practical, concise, highly relevant financial, campus, and life recommendations in clean bullet points.");
 
             String payload = String.format("""
@@ -100,7 +100,7 @@ public class NexusAiClient {
             }
         } catch (Exception e) {
             // Log for debugging and seamlessly switch to offline local intelligence engine
-            System.err.println("[NexusAiClient] Remote LLM gateway unreachable (" + e.getMessage() + "). Engaging local heuristic copilot.");
+            System.err.println("[NexusAiClient] Remote advisory gateway unreachable (" + e.getMessage() + "). Engaging local heuristic engine.");
         }
 
         // Local heuristic fallback
@@ -115,9 +115,17 @@ public class NexusAiClient {
         int idx = json.indexOf("\"content\":");
         if (idx == -1) return null;
 
-        int start = json.indexOf("\"", idx + 10);
-        if (start == -1) return null;
+        // Skip whitespace after "content":
+        int p = idx + 10;
+        while (p < json.length() && Character.isWhitespace(json.charAt(p))) {
+            p++;
+        }
+        if (p >= json.length() || json.charAt(p) != '\"') {
+            // Value is null or non-string
+            return null;
+        }
 
+        int start = p;
         StringBuilder sb = new StringBuilder();
         boolean escape = false;
         for (int i = start + 1; i < json.length(); i++) {
@@ -138,7 +146,8 @@ public class NexusAiClient {
                 sb.append(c);
             }
         }
-        return sb.toString();
+        String res = sb.toString().trim();
+        return res.isEmpty() || res.equalsIgnoreCase("null") ? null : res;
     }
 
     private static String escapeJson(String raw) {
