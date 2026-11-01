@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -21,13 +22,14 @@ import nexus.tasks.Task;
 import nexus.tasks.TaskPriority;
 import nexus.goals.Goal;
 import nexus.goals.Milestone;
+import nexus.media.CinemaBooking;
 import nexus.media.MediaItem;
 import nexus.media.MediaType;
 import nexus.media.MediaStatus;
 
 /**
  * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V7.
- * Persists Tasks, Transactions, Goals, Milestones, Media Items, and Market Purchases.
+ * Persists Tasks, Transactions, Goals, Milestones, Media Items, Cinema Bookings, and Market Purchases.
  */
 public class DatabaseService implements NexusListener {
     private static final String URL = "jdbc:sqlite:" + (System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db");
@@ -58,7 +60,11 @@ public class DatabaseService implements NexusListener {
             writeConnection = DriverManager.getConnection(URL);
             
             try (Statement stmt = writeConnection.createStatement()) {
-                // 1. Tasks table
+                // Enable Write-Ahead Logging & Busy Timeout to eliminate database locks
+                stmt.execute("PRAGMA journal_mode = WAL;");
+                stmt.execute("PRAGMA busy_timeout = 5000;");
+
+                // 1. Tasks
                 stmt.execute("CREATE TABLE IF NOT EXISTS tasks (" +
                              "id TEXT PRIMARY KEY, " +
                              "title TEXT, " +
@@ -67,7 +73,7 @@ public class DatabaseService implements NexusListener {
                              "due_date TEXT, " +
                              "category TEXT)");
 
-                // 2. Transactions table
+                // 2. Transactions
                 stmt.execute("CREATE TABLE IF NOT EXISTS transactions (" +
                              "id TEXT PRIMARY KEY, " +
                              "description TEXT, " +
@@ -75,21 +81,21 @@ public class DatabaseService implements NexusListener {
                              "date INTEGER, " +
                              "category TEXT)");
                              
-                // 3. Goals table
+                // 3. Goals
                 stmt.execute("CREATE TABLE IF NOT EXISTS goals (" +
                              "id TEXT PRIMARY KEY, " +
                              "title TEXT, " +
                              "deadline TEXT, " +
                              "category TEXT)");
 
-                // 4. Milestones table
+                // 4. Milestones
                 stmt.execute("CREATE TABLE IF NOT EXISTS milestones (" +
                              "id TEXT PRIMARY KEY, " +
                              "goal_id TEXT, " +
                              "description TEXT, " +
                              "completed INTEGER)");
 
-                // 5. Media items table
+                // 5. Media items (Watchlist)
                 stmt.execute("CREATE TABLE IF NOT EXISTS media_items (" +
                              "id TEXT PRIMARY KEY, " +
                              "title TEXT, " +
@@ -102,7 +108,21 @@ public class DatabaseService implements NexusListener {
                              "summary TEXT, " +
                              "year TEXT)");
 
-                // 6. Market purchases
+                // 6. Cinema Bookings (BookMyShow Tickets)
+                stmt.execute("CREATE TABLE IF NOT EXISTS cinema_bookings (" +
+                             "id TEXT PRIMARY KEY, " +
+                             "movie_title TEXT, " +
+                             "theatre TEXT, " +
+                             "showtime TEXT, " +
+                             "seats TEXT, " +
+                             "base_price REAL, " +
+                             "discount REAL, " +
+                             "promo_code TEXT, " +
+                             "final_total REAL, " +
+                             "booking_date INTEGER, " +
+                             "status TEXT)");
+
+                // 7. Market Purchases
                 stmt.execute("CREATE TABLE IF NOT EXISTS market_purchases (" +
                              "id TEXT PRIMARY KEY, " +
                              "product_name TEXT, " +
@@ -110,7 +130,7 @@ public class DatabaseService implements NexusListener {
                              "timestamp INTEGER)");
             }
 
-            // Migrations for existing tables (ignore if columns already exist)
+            // Safe Alter Table migrations
             safelyExecute("ALTER TABLE tasks ADD COLUMN due_date TEXT");
             safelyExecute("ALTER TABLE tasks ADD COLUMN category TEXT");
             safelyExecute("ALTER TABLE transactions ADD COLUMN category TEXT");
@@ -119,16 +139,13 @@ public class DatabaseService implements NexusListener {
 
         } catch (Exception e) {
             System.err.println("[DatabaseService] Init error: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
     private void safelyExecute(String sql) {
         try (Statement s = writeConnection.createStatement()) {
             s.execute(sql);
-        } catch (SQLException ignored) {
-            // Column likely already exists
-        }
+        } catch (SQLException ignored) {}
     }
     
     // --- LOAD METHODS ---
@@ -148,15 +165,14 @@ public class DatabaseService implements NexusListener {
                 String due = rs.getString("due_date");
                 String cat = rs.getString("category");
 
-                Task t = new Task(
+                tasks.add(new Task(
                     rs.getString("id"),
                     rs.getString("title"),
                     prio,
                     rs.getInt("completed") == 1,
                     cat != null ? cat : "General",
                     due != null ? due : "Today"
-                );
-                tasks.add(t);
+                ));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -180,14 +196,13 @@ public class DatabaseService implements NexusListener {
                     }
                 }
 
-                Transaction t = new Transaction(
+                transactions.add(new Transaction(
                     rs.getString("id"),
                     rs.getString("description"),
                     rs.getDouble("amount"),
                     new Date(rs.getLong("date")),
                     cat
-                );
-                transactions.add(t);
+                ));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -207,8 +222,7 @@ public class DatabaseService implements NexusListener {
                 String category = rs.getString("category");
 
                 List<Milestone> milestones = loadMilestonesForGoal(gId);
-                Goal g = new Goal(gId, title, category, deadline, milestones);
-                goals.add(g);
+                goals.add(new Goal(gId, title, category, deadline, milestones));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -252,7 +266,7 @@ public class DatabaseService implements NexusListener {
                     status = MediaStatus.valueOf(rs.getString("status"));
                 } catch (Exception ignored) {}
 
-                MediaItem item = new MediaItem(
+                mediaList.add(new MediaItem(
                     rs.getString("id"),
                     rs.getString("title"),
                     type,
@@ -263,8 +277,7 @@ public class DatabaseService implements NexusListener {
                     rs.getDouble("rating_score"),
                     rs.getString("summary"),
                     rs.getString("year")
-                );
-                mediaList.add(item);
+                ));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -272,7 +285,36 @@ public class DatabaseService implements NexusListener {
         return mediaList;
     }
 
-    // --- ASYNC EVENT LISTENER & WRITER ---
+    public List<CinemaBooking> loadBookings() {
+        List<CinemaBooking> list = new ArrayList<>();
+        String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status FROM cinema_bookings ORDER BY booking_date DESC";
+        try (Statement stmt = writeConnection.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String seatsRaw = rs.getString("seats");
+                List<String> seatsList = seatsRaw != null ? Arrays.asList(seatsRaw.split(",\\s*")) : new ArrayList<>();
+
+                list.add(new CinemaBooking(
+                    rs.getString("id"),
+                    rs.getString("movie_title"),
+                    rs.getString("theatre"),
+                    rs.getString("showtime"),
+                    seatsList,
+                    rs.getDouble("base_price"),
+                    rs.getDouble("discount"),
+                    rs.getString("promo_code"),
+                    rs.getDouble("final_total"),
+                    new Date(rs.getLong("booking_date")),
+                    rs.getString("status")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // --- ASYNC EVENT WRITER ---
 
     @Override
     public void onEvent(NexusEvent event) {
@@ -322,6 +364,25 @@ public class DatabaseService implements NexusListener {
                         pstmt.executeUpdate();
                     }
                 }
+                // CINEMA BOOKING EVENTS
+                else if ("TICKET_BOOKED".equals(type) && payload instanceof CinemaBooking) {
+                    CinemaBooking b = (CinemaBooking) payload;
+                    String sql = "INSERT OR REPLACE INTO cinema_bookings(id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                        pstmt.setString(1, b.getId());
+                        pstmt.setString(2, b.getMovieTitle());
+                        pstmt.setString(3, b.getTheatre());
+                        pstmt.setString(4, b.getShowTime());
+                        pstmt.setString(5, b.getSeatsFormatted());
+                        pstmt.setDouble(6, b.getBasePrice());
+                        pstmt.setDouble(7, b.getDiscount());
+                        pstmt.setString(8, b.getPromoCode());
+                        pstmt.setDouble(9, b.getFinalTotal());
+                        pstmt.setLong(10, b.getBookingDate().getTime());
+                        pstmt.setString(11, b.getStatus());
+                        pstmt.executeUpdate();
+                    }
+                }
                 // GOAL & MILESTONE EVENTS
                 else if ("GOAL_ADDED".equals(type) && payload instanceof Goal) {
                     Goal g = (Goal) payload;
@@ -364,7 +425,7 @@ public class DatabaseService implements NexusListener {
                         }
                     }
                 }
-                // MEDIA EVENTS
+                // MEDIA WATCHLIST EVENTS
                 else if (("MEDIA_ADDED".equals(type) || "MEDIA_STATUS_CHANGED".equals(type) || "MEDIA_RATED".equals(type)) && payload instanceof MediaItem) {
                     MediaItem item = (MediaItem) payload;
                     String sql = "INSERT OR REPLACE INTO media_items(id, title, type, status, rating, poster_url, genres, rating_score, summary, year) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -402,7 +463,7 @@ public class DatabaseService implements NexusListener {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("[DatabaseService] Background Write Error: " + e.getMessage());
+                System.err.println("[DatabaseService] Async Write Error: " + e.getMessage());
             }
         });
     }

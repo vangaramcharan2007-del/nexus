@@ -9,18 +9,20 @@ import java.util.List;
 public class MediaService implements NexusListener {
     private List<MediaItem> mediaItems;
     private List<MediaItem> searchResults;
+    private List<CinemaBooking> bookings;
     
     public MediaService() {
         mediaItems = new ArrayList<>();
         searchResults = new ArrayList<>();
+        bookings = new ArrayList<>();
         
         EventBus.getInstance().subscribe("OS_MEDIA_PLAYING", this);
         
-        // Seed default popular items if empty
         seedDefaults();
+        seedBookings();
 
-        // Perform initial live search for popular shows in background
-        searchOnline("Arcane");
+        // Background live search
+        searchOnline("Avengers");
     }
 
     private void seedDefaults() {
@@ -36,6 +38,15 @@ public class MediaService implements NexusListener {
                 "");
         m2.setStatus(MediaStatus.WANT_TO_CONSUME);
         mediaItems.add(m2);
+    }
+
+    private void seedBookings() {
+        List<String> seats = new ArrayList<>();
+        seats.add("C4");
+        seats.add("C5");
+        CinemaBooking b = new CinemaBooking("Dune: Part Two (IMAX 3D)", "PVR Grand Galada, Chennai", 
+                "Today • 06:45 PM", seats, 500.0, 125.0, "SRMSTUDENT", 375.0);
+        bookings.add(b);
     }
 
     public void searchOnline(String query) {
@@ -54,7 +65,7 @@ public class MediaService implements NexusListener {
     public void addMediaItem(MediaItem item) {
         for (MediaItem existing : mediaItems) {
             if (existing.getTitle().equalsIgnoreCase(item.getTitle())) {
-                return; // avoid duplicates
+                return;
             }
         }
         mediaItems.add(0, item);
@@ -100,14 +111,48 @@ public class MediaService implements NexusListener {
             EventBus.getInstance().publish(new NexusEvent("MEDIA_UPDATED", mediaItems, "Media"));
         }
     }
+
+    // --- CINEMA & BOOKING OPERATIONS ---
+
+    public CinemaBooking createBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
+                                       double basePrice, double discount, String promoCode, double finalTotal) {
+        CinemaBooking booking = new CinemaBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal);
+        bookings.add(0, booking);
+
+        // Notify EventBus
+        EventBus.getInstance().publish(new NexusEvent("TICKET_BOOKED", booking, "Media"));
+        EventBus.getInstance().publish(new NexusEvent("BOOKINGS_UPDATED", bookings, "Media"));
+
+        return booking;
+    }
+
+    public double calculateDiscount(double subtotal, String code) {
+        if (code == null) return 0.0;
+        String clean = code.trim().toUpperCase();
+        return switch (clean) {
+            case "SRMSTUDENT" -> subtotal * 0.25; // 25% student discount
+            case "NEXUS50" -> Math.min(50.0, subtotal * 0.50); // $50 flat
+            case "FIRSTSHOW" -> subtotal * 0.15; // 15% discount
+            case "SPECIAL10" -> subtotal * 0.10;
+            default -> 0.0;
+        };
+    }
     
     public List<MediaItem> getMediaItems() { return mediaItems; }
     public List<MediaItem> getSearchResults() { return searchResults; }
+    public List<CinemaBooking> getBookings() { return bookings; }
     
     public void setMediaItems(List<MediaItem> items) {
         if (items != null && !items.isEmpty()) {
             this.mediaItems = items;
             EventBus.getInstance().publish(new NexusEvent("MEDIA_UPDATED", mediaItems, "Media"));
+        }
+    }
+
+    public void setBookings(List<CinemaBooking> loadedBookings) {
+        if (loadedBookings != null && !loadedBookings.isEmpty()) {
+            this.bookings = loadedBookings;
+            EventBus.getInstance().publish(new NexusEvent("BOOKINGS_UPDATED", bookings, "Media"));
         }
     }
 

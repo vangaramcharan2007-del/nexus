@@ -19,33 +19,42 @@ import nexus.analytics.AnalyticsService;
 import nexus.auth.LoginPanel;
 
 /**
- * The NexusApplication is the main entry point and the core graphical shell of the NEXUS application.
- * It extends JFrame to provide a windowed user interface.
+ * NEXUS Enterprise Application Shell - Production Architecture for Review 2.
  * 
- * Review 2 Enterprise Architecture:
- * 1. EventBus Pub/Sub decoupled inter-module messaging.
- * 2. SQLite single-threaded asynchronous persistent storage for all modules.
- * 3. Real-Time live API integration (CoinGecko crypto, TVMaze shows/movies, Open-Meteo SRM weather, Fakestore products).
- * 4. Rich FlatLaf reactive dashboards with category pie charts, HUD widgets, progress meters.
+ * Core Capabilities:
+ * 1. EventBus Pub/Sub decoupled reactive event hub.
+ * 2. SQLite single-threaded asynchronous persistent database (Tasks, Transactions, Goals, Media, Bookings).
+ * 3. Real-Time live API integration:
+ *    - CoinGecko Decentralized Crypto Feed (BTC, ETH, SOL with INR/USD conversion)
+ *    - TVMaze & IMDb live entertainment metadata search
+ *    - Open-Meteo SRM University Kattankulathur Campus live sensor telemetry
+ *    - FakeStore live e-commerce catalog
+ * 4. BookMyShow Cinema Box Office Engine:
+ *    - Interactive 60-seat visual allocation matrix (Executive, Club, VIP)
+ *    - Real-time seat tally, student promo discounts (SRMSTUDENT, NEXUS50), and digital ticket pass generator
+ * 5. Advanced Financial Suite:
+ *    - Loan EMI Calculator (E = P·r·(1+r)^n / ((1+r)^n - 1))
+ *    - Compound Interest & Wealth Growth Calculator (A = P(1 + r/n)^nt)
+ *    - Systematic Investment Plan (SIP) Calculator
+ *    - Discount & GST/Tax Net Engine
+ * 6. Strategic Goals with deadline tracking, milestones, and progress bars.
  */
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
         setTitle("NEXUS Enterprise Platform - Review 2 Edition");
-        setSize(1080, 720);
+        setSize(1100, 740);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         setLocationRelativeTo(null);
         
-        // Initialize Tray Manager
+        // Initialize Tray Manager & Voice Engine
         new nexus.common.NexusTrayManager(this);
-        
-        // Initialize Voice Engine & Sound Manager
         new nexus.common.SoundManager();
         
         // Initialize DatabaseService early
         nexus.database.DatabaseService databaseService = new nexus.database.DatabaseService();
         
-        // Initialize Services
+        // Initialize Core Services
         DashboardService dashboardService = new DashboardService();
         FinanceService financeService = new FinanceService();
         MarketService marketService = new MarketService();
@@ -53,12 +62,6 @@ public class NexusApplication extends JFrame {
         GoalService goalService = new GoalService();
         MediaService mediaService = new MediaService();
         AnalyticsService analyticsService = new AnalyticsService();
-        
-        nexus.rules.RuleEngineService ruleEngine = new nexus.rules.RuleEngineService();
-        ruleEngine.addRule("TASK_COMPLETED", event -> {
-            // A custom IFTTT rule: Completing a task automatically gives a tiny budget bonus
-            financeService.addFunds("Task Completion Bonus", 5.0);
-        });
         
         nexus.realtime.WindowsMediaHook mediaHook = new nexus.realtime.WindowsMediaHook();
         mediaHook.start();
@@ -83,22 +86,25 @@ public class NexusApplication extends JFrame {
         if (!loadedMedia.isEmpty()) {
             mediaService.setMediaItems(loadedMedia);
         }
+
+        java.util.List<nexus.media.CinemaBooking> loadedBookings = databaseService.loadBookings();
+        if (!loadedBookings.isEmpty()) {
+            mediaService.setBookings(loadedBookings);
+        }
         
-        // Create Tabs
+        // Create Production Tabs (Clean, professional, zero fluff)
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 12));
         
         tabbedPane.addTab("Dashboard", new DashboardPanel(dashboardService));
-        tabbedPane.addTab("Finance", new FinancePanel(financeService));
-        tabbedPane.addTab("Market", new MarketPanel(marketService));
+        tabbedPane.addTab("Finance & Calculators", new FinancePanel(financeService));
+        tabbedPane.addTab("Cinema & Box Office", new MediaPanel(mediaService));
+        tabbedPane.addTab("Live Market", new MarketPanel(marketService));
         tabbedPane.addTab("Tasks", new TaskPanel(taskService));
-        tabbedPane.addTab("Goals", new GoalPanel(goalService));
-        tabbedPane.addTab("Media", new MediaPanel(mediaService));
+        tabbedPane.addTab("Strategic Goals", new GoalPanel(goalService));
         tabbedPane.addTab("Analytics", new AnalyticsPanel(analyticsService));
-        tabbedPane.addTab("Rules", new nexus.rules.RulePanel(ruleEngine));
-        tabbedPane.addTab("V7 Enterprise", new nexus.startup.StartupDashboardPanel());
         
-        // Setup CardLayout
+        // Setup CardLayout with Login
         CardLayout cardLayout = new CardLayout();
         JPanel mainContent = new JPanel(cardLayout);
         
@@ -106,18 +112,18 @@ public class NexusApplication extends JFrame {
             cardLayout.show(mainContent, "MainApp");
         });
         
-        // Add Activity Feed
+        // Main Container with Activity Feed
         JPanel mainAppContainer = new JPanel(new BorderLayout());
         mainAppContainer.add(tabbedPane, BorderLayout.CENTER);
         mainAppContainer.add(new nexus.common.ActivityFeedPanel(), BorderLayout.EAST);
         
-        // God Mode Terminal
+        // God Mode Terminal (Direct event trigger for demonstrations)
         JTextField godModeTerminal = new JTextField();
         godModeTerminal.setToolTipText("God Mode Terminal: /budget <amount> or /score <amount>");
         godModeTerminal.setBackground(new Color(20, 20, 20));
         godModeTerminal.setForeground(new Color(0, 255, 0));
         godModeTerminal.setCaretColor(new Color(0, 255, 0));
-        godModeTerminal.setFont(new Font("Monospaced", Font.BOLD, 14));
+        godModeTerminal.setFont(new Font("Monospaced", Font.BOLD, 13));
         godModeTerminal.addActionListener(e -> {
             String cmd = godModeTerminal.getText().trim();
             godModeTerminal.setText("");
@@ -125,12 +131,12 @@ public class NexusApplication extends JFrame {
                 try {
                     double amount = Double.parseDouble(cmd.substring(8).trim());
                     nexus.common.EventBus.getInstance().publish(new nexus.common.NexusEvent("GOD_MODE_BUDGET", amount, "GodMode"));
-                } catch (NumberFormatException ex) {}
+                } catch (NumberFormatException ignored) {}
             } else if (cmd.startsWith("/score ")) {
                 try {
                     int score = Integer.parseInt(cmd.substring(7).trim());
                     nexus.common.EventBus.getInstance().publish(new nexus.common.NexusEvent("GOD_MODE_SCORE", score, "GodMode"));
-                } catch (NumberFormatException ex) {}
+                } catch (NumberFormatException ignored) {}
             }
         });
         mainAppContainer.add(godModeTerminal, BorderLayout.SOUTH);
@@ -141,7 +147,7 @@ public class NexusApplication extends JFrame {
         setLayout(new BorderLayout());
         add(mainContent, BorderLayout.CENTER);
         
-        // Show Login panel initially
+        // Show Login initially
         cardLayout.show(mainContent, "Login");
         
         nexus.common.EventBus.getInstance().subscribeToAll(new nexus.common.NexusListener() {
