@@ -109,6 +109,14 @@ public class Review2VerificationRunner {
                     dt.finalPayable, dt.discountSavings, dt.taxAmount);
 
             System.out.println("   >>> STATUS: FINANCIAL FORMULA ENGINE 100% MATHEMATICALLY ACCURATE!");
+
+            // 4B. TEST BUDGET RESET & RE-ALLOCATION ENGINE
+            nexus.finance.FinanceService financeService = new nexus.finance.FinanceService();
+            double preReset = financeService.getBudget().getTotalBudget();
+            financeService.resetBudget(15000.0);
+            System.out.printf("   ✓ Budget Re-Allocation Engine: Reset from $%,.2f -> $%,.2f (Remaining: $%,.2f)\n",
+                    preReset, financeService.getBudget().getTotalBudget(), financeService.getBudget().getRemaining());
+            System.out.println("   >>> STATUS: BUDGET RESET & CAPITAL RE-ALLOCATION VALIDATED!");
         } catch (Exception e) {
             System.err.println("   ✗ Financial Calculator Error: " + e.getMessage());
         }

@@ -242,9 +242,107 @@ public class FinancePanel extends JPanel implements NexusListener {
         budgetProgressBar.setFont(new Font("Segoe UI", Font.BOLD, 11));
         budgetProgressBar.setPreferredSize(new Dimension(200, 18));
 
+        JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        rightControls.setOpaque(false);
+
+        JButton resetBudgetBtn = new JButton("🔄 Reset Budget");
+        resetBudgetBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        resetBudgetBtn.setBackground(new Color(59, 130, 246));
+        resetBudgetBtn.setForeground(Color.WHITE);
+        resetBudgetBtn.setFocusPainted(false);
+        resetBudgetBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        resetBudgetBtn.addActionListener(e -> showResetBudgetDialog());
+
+        rightControls.add(resetBudgetBtn);
+
         panel.add(label, BorderLayout.WEST);
         panel.add(budgetProgressBar, BorderLayout.CENTER);
+        panel.add(rightControls, BorderLayout.EAST);
         return panel;
+    }
+
+    private void showResetBudgetDialog() {
+        JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Budget Re-Allocation & Reset", true);
+        dlg.setSize(440, 250);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel p = new JPanel(new BorderLayout(10, 10));
+        p.setBackground(new Color(15, 23, 42));
+        p.setBorder(BorderFactory.createEmptyBorder(14, 16, 14, 16));
+
+        JLabel title = new JLabel("⚙️ STUDENT BUDGET RE-ALLOCATION");
+        title.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        title.setForeground(new Color(56, 189, 248));
+        p.add(title, BorderLayout.NORTH);
+
+        JPanel form = new JPanel(new GridLayout(3, 1, 0, 8));
+        form.setOpaque(false);
+
+        JLabel info = new JLabel("<html><body style='width:380px; color:#cbd5e1; font-size:11px;'>"
+                + "Reset your monthly capital allocation. This recalculates daily burn rate, safe allowance, and runway across all modules.</body></html>");
+        form.add(info);
+
+        JPanel inputRow = new JPanel(new BorderLayout(8, 0));
+        inputRow.setOpaque(false);
+        JLabel amtLabel = new JLabel("New Budget Capital ($):");
+        amtLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        amtLabel.setForeground(Color.WHITE);
+        JTextField budgetInput = new JTextField(String.format("%.2f", service.getBudget().getTotalBudget()));
+        budgetInput.setFont(new Font("Consolas", Font.BOLD, 13));
+        budgetInput.setBackground(new Color(30, 41, 59));
+        budgetInput.setForeground(Color.WHITE);
+        budgetInput.setCaretColor(Color.CYAN);
+        inputRow.add(amtLabel, BorderLayout.WEST);
+        inputRow.add(budgetInput, BorderLayout.CENTER);
+        form.add(inputRow);
+
+        JCheckBox clearSpentBox = new JCheckBox("Clear current expenditure & reset spent to $0.00", true);
+        clearSpentBox.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        clearSpentBox.setOpaque(false);
+        clearSpentBox.setForeground(new Color(203, 213, 225));
+        form.add(clearSpentBox);
+
+        p.add(form, BorderLayout.CENTER);
+
+        JPanel btm = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btm.setOpaque(false);
+
+        JButton cancelBtn = new JButton("Cancel");
+        cancelBtn.setBackground(new Color(71, 85, 105));
+        cancelBtn.setForeground(Color.WHITE);
+        cancelBtn.addActionListener(e -> dlg.dispose());
+
+        JButton applyBtn = new JButton("Apply Budget Reset 🔄");
+        applyBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        applyBtn.setBackground(new Color(16, 185, 129));
+        applyBtn.setForeground(Color.WHITE);
+        applyBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        applyBtn.addActionListener(e -> {
+            try {
+                double newAmt = Double.parseDouble(budgetInput.getText().trim());
+                if (newAmt <= 0) {
+                    JOptionPane.showMessageDialog(dlg, "Please enter a positive budget amount.", "Invalid Budget", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                boolean clearSpent = clearSpentBox.isSelected();
+                if (clearSpent) {
+                    service.resetBudget(newAmt);
+                } else {
+                    service.setBudgetCap(newAmt);
+                }
+                dlg.dispose();
+                JOptionPane.showMessageDialog(this, String.format("Student budget successfully re-allocated to $%,.2f!", newAmt), "Budget Re-Allocated", JOptionPane.INFORMATION_MESSAGE);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dlg, "Invalid number format.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        btm.add(cancelBtn);
+        btm.add(applyBtn);
+        p.add(btm, BorderLayout.SOUTH);
+
+        dlg.setContentPane(p);
+        dlg.setVisible(true);
     }
 
     private JPanel createInputForm() {

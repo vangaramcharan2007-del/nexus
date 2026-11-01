@@ -85,7 +85,20 @@ public class FinanceService implements NexusListener {
         } else if ("GOD_MODE_BUDGET".equals(event.getType())) {
             double amount = (Double) event.getPayload();
             addFunds("God Mode Budget Cheat", amount, TransactionCategory.INVESTMENT);
+        } else if ("RESET_BUDGET_REQUEST".equals(event.getType())) {
+            double amount = (Double) event.getPayload();
+            resetBudget(amount);
         }
+    }
+    
+    public void resetBudget(double newTotalAmount) {
+        this.budget = new Budget(newTotalAmount);
+        EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
+    }
+
+    public void setBudgetCap(double newTotalAmount) {
+        this.budget.setTotalBudget(newTotalAmount);
+        EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
     }
     
     public Budget getBudget() { return budget; }
