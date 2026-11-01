@@ -16,11 +16,14 @@ public class FinancePanel extends JPanel implements NexusListener {
     private final FinanceService service;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, HH:mm");
 
-    // UI Components for Tab 1
+    // KPI Cards
     private JLabel totalBudgetVal;
     private JLabel totalSpentVal;
     private JLabel remainingVal;
-    private JLabel incomeVal;
+    private JLabel interestYieldVal;
+    private JLabel emiBurdenVal;
+    private JLabel runwayVal;
+
     private JProgressBar budgetProgressBar;
     private JLabel tickerLabel;
     private PieChartPanel pieChartPanel;
@@ -29,74 +32,48 @@ public class FinancePanel extends JPanel implements NexusListener {
 
     public FinancePanel(FinanceService service) {
         this.service = service;
-        setLayout(new BorderLayout());
-        setBackground(new Color(20, 24, 33));
+        setLayout(new BorderLayout(15, 12));
+        setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        setBackground(new Color(15, 23, 42));
 
-        JTabbedPane financeTabs = new JTabbedPane();
-        financeTabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-        // Tab 1: Ledger & Live Dashboard
-        financeTabs.addTab("📊 Budget & Live Ledger", createBudgetLedgerPanel());
-
-        // Tab 2: Advanced Financial Calculators & Formulas
-        financeTabs.addTab("🧮 Financial Calculators & Planning Suite", createCalculatorsPanel());
-
-        add(financeTabs, BorderLayout.CENTER);
-
-        // EventBus subscriptions
-        EventBus.getInstance().subscribe("TRANSACTION_ADDED", this);
-        EventBus.getInstance().subscribe("BUDGET_UPDATED", this);
-        EventBus.getInstance().subscribe("TRANSACTIONS_UPDATED", this);
-        EventBus.getInstance().subscribe("CRYPTO_RATES_UPDATED", this);
-
-        updateView();
-        updateTicker(service.getCryptoPrices());
-    }
-
-    // --- TAB 1: BUDGET & LEDGER ---
-    private JPanel createBudgetLedgerPanel() {
-        JPanel panel = new JPanel(new BorderLayout(15, 12));
-        panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-        panel.setBackground(new Color(20, 24, 33));
-
-        // Top Ticker + KPI Cards + Progress
+        // 1. TOP SECTION (Ticker + Automated Intelligence KPI Grid + Progress Bar)
         JPanel topContainer = new JPanel();
         topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
         topContainer.setOpaque(false);
 
         topContainer.add(createTickerBar());
         topContainer.add(Box.createVerticalStrut(8));
-        topContainer.add(createKpiCardPanel());
+        topContainer.add(createAutomatedKpiPanel());
         topContainer.add(Box.createVerticalStrut(8));
         topContainer.add(createProgressBarPanel());
 
-        panel.add(topContainer, BorderLayout.NORTH);
+        add(topContainer, BorderLayout.NORTH);
 
-        // Center Split (Form + Pie Chart on Left | Table on Right)
+        // 2. CENTER SECTION (Left: Transaction Form & Category Pie Chart | Right: Audit Ledger Table)
         JPanel centerGrid = new JPanel(new GridLayout(1, 2, 14, 0));
         centerGrid.setOpaque(false);
 
-        // Left
+        // Left Panel
         JPanel leftPanel = new JPanel(new BorderLayout(8, 8));
         leftPanel.setOpaque(false);
         leftPanel.add(createInputForm(), BorderLayout.NORTH);
 
         pieChartPanel = new PieChartPanel();
-        pieChartPanel.setPreferredSize(new Dimension(300, 230));
+        pieChartPanel.setPreferredSize(new Dimension(300, 240));
         pieChartPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(55, 65, 81)), 
-                "SPENDING BY CATEGORY", 
+                BorderFactory.createLineBorder(new Color(51, 65, 85)), 
+                "AUTOMATED EXPENSE DISTRIBUTION", 
                 0, 0, new Font("Segoe UI", Font.BOLD, 12), Color.CYAN));
         leftPanel.add(pieChartPanel, BorderLayout.CENTER);
 
         centerGrid.add(leftPanel);
 
-        // Right
+        // Right Panel (Table)
         JPanel rightPanel = new JPanel(new BorderLayout(5, 5));
         rightPanel.setOpaque(false);
         rightPanel.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(new Color(55, 65, 81)), 
-                "REAL-TIME FINANCIAL LEDGER & AUDIT TRAIL", 
+                BorderFactory.createLineBorder(new Color(51, 65, 85)), 
+                "REAL-TIME FINANCIAL AUDIT LEDGER (ACID COMPLIANT)", 
                 0, 0, new Font("Segoe UI", Font.BOLD, 12), new Color(147, 197, 253)));
 
         String[] columns = {"Date", "Description", "Category", "Amount"};
@@ -118,9 +95,16 @@ public class FinancePanel extends JPanel implements NexusListener {
         rightPanel.add(tableScroll, BorderLayout.CENTER);
 
         centerGrid.add(rightPanel);
+        add(centerGrid, BorderLayout.CENTER);
 
-        panel.add(centerGrid, BorderLayout.CENTER);
-        return panel;
+        // Subscriptions
+        EventBus.getInstance().subscribe("TRANSACTION_ADDED", this);
+        EventBus.getInstance().subscribe("BUDGET_UPDATED", this);
+        EventBus.getInstance().subscribe("TRANSACTIONS_UPDATED", this);
+        EventBus.getInstance().subscribe("CRYPTO_RATES_UPDATED", this);
+
+        updateView();
+        updateTicker(service.getCryptoPrices());
     }
 
     private JPanel createTickerBar() {
@@ -131,7 +115,7 @@ public class FinancePanel extends JPanel implements NexusListener {
                 BorderFactory.createEmptyBorder(6, 12, 6, 12)
         ));
 
-        JLabel title = new JLabel("● LIVE COINGECKO CRYPTO FEED:");
+        JLabel title = new JLabel("● LIVE COINGECKO CRYPTO & FOREX FEED:");
         title.setFont(new Font("Segoe UI", Font.BOLD, 11));
         title.setForeground(new Color(52, 211, 153));
 
@@ -156,36 +140,41 @@ public class FinancePanel extends JPanel implements NexusListener {
         return bar;
     }
 
-    private JPanel createKpiCardPanel() {
-        JPanel panel = new JPanel(new GridLayout(1, 4, 10, 0));
+    private JPanel createAutomatedKpiPanel() {
+        // 6 Automated Financial Intelligence Cards
+        JPanel panel = new JPanel(new GridLayout(1, 6, 8, 0));
         panel.setOpaque(false);
 
         totalBudgetVal = new JLabel("$0.00");
         totalSpentVal = new JLabel("$0.00");
         remainingVal = new JLabel("$0.00");
-        incomeVal = new JLabel("$0.00");
+        interestYieldVal = new JLabel("+$0.00");
+        emiBurdenVal = new JLabel("-$0.00");
+        runwayVal = new JLabel("0 Days");
 
-        panel.add(createCard("TOTAL BUDGET", totalBudgetVal, new Color(59, 130, 246)));
-        panel.add(createCard("TOTAL SPENT", totalSpentVal, new Color(239, 68, 68)));
-        panel.add(createCard("REMAINING", remainingVal, new Color(16, 185, 129)));
-        panel.add(createCard("TOTAL INCOME", incomeVal, new Color(168, 85, 247)));
+        panel.add(createCard("TOTAL CAPITAL", totalBudgetVal, new Color(59, 130, 246)));
+        panel.add(createCard("TOTAL EXPENSE", totalSpentVal, new Color(239, 68, 68)));
+        panel.add(createCard("NET LIQUID", remainingVal, new Color(16, 185, 129)));
+        panel.add(createCard("PASSIVE INTEREST", interestYieldVal, new Color(34, 197, 94)));
+        panel.add(createCard("MONTHLY DEBT/EMI", emiBurdenVal, new Color(245, 158, 11)));
+        panel.add(createCard("CASH RUNWAY", runwayVal, new Color(168, 85, 247)));
 
         return panel;
     }
 
     private JPanel createCard(String title, JLabel valueLabel, Color accent) {
-        JPanel card = new JPanel(new BorderLayout(4, 4));
+        JPanel card = new JPanel(new BorderLayout(3, 3));
         card.setBackground(new Color(30, 41, 59));
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 4, 0, 0, accent),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)
         ));
 
         JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 10));
         titleLabel.setForeground(new Color(156, 163, 175));
 
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
         valueLabel.setForeground(Color.WHITE);
 
         card.add(titleLabel, BorderLayout.NORTH);
@@ -197,7 +186,7 @@ public class FinancePanel extends JPanel implements NexusListener {
         JPanel panel = new JPanel(new BorderLayout(8, 4));
         panel.setOpaque(false);
 
-        JLabel label = new JLabel("Budget Utilization:");
+        JLabel label = new JLabel("Budget Utilization & Burn Velocity:");
         label.setFont(new Font("Segoe UI", Font.BOLD, 11));
         label.setForeground(new Color(209, 213, 219));
 
@@ -216,7 +205,7 @@ public class FinancePanel extends JPanel implements NexusListener {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(new Color(30, 41, 59));
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(55, 65, 81)),
+                BorderFactory.createLineBorder(new Color(51, 65, 85)),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
 
@@ -250,7 +239,7 @@ public class FinancePanel extends JPanel implements NexusListener {
         panel.add(catCombo, gbc);
 
         gbc.gridx = 0; gbc.gridy = 3;
-        panel.add(new JLabel("Flow:"), gbc);
+        panel.add(new JLabel("Flow Type:"), gbc);
         gbc.gridx = 1; gbc.gridy = 3;
         panel.add(typeCombo, gbc);
 
@@ -280,266 +269,34 @@ public class FinancePanel extends JPanel implements NexusListener {
         return panel;
     }
 
-    // --- TAB 2: ADVANCED FINANCIAL CALCULATORS ---
-    private JPanel createCalculatorsPanel() {
-        JPanel panel = new JPanel(new GridLayout(2, 2, 12, 12));
-        panel.setBackground(new Color(15, 23, 42));
-        panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
-
-        panel.add(createEmiCalculatorCard());
-        panel.add(createCompoundInterestCard());
-        panel.add(createSipCalculatorCard());
-        panel.add(createDiscountTaxCard());
-
-        return panel;
-    }
-
-    // Calculator 1: Loan EMI
-    private JPanel createEmiCalculatorCard() {
-        JPanel card = createCalcCardTemplate("🏛️ LOAN EMI CALCULATOR (Formula: E = P·r·(1+r)^n / ((1+r)^n - 1))");
-
-        JTextField principalField = new JTextField("50000", 8);
-        JTextField rateField = new JTextField("8.5", 5);
-        JTextField tenureField = new JTextField("36", 5);
-
-        JLabel emiResultLabel = new JLabel("Monthly EMI: $0.00");
-        emiResultLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        emiResultLabel.setForeground(new Color(52, 211, 153));
-
-        JLabel totalResultLabel = new JLabel("Total Interest: $0.00  |  Total Payable: $0.00");
-        totalResultLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        totalResultLabel.setForeground(new Color(203, 213, 225));
-
-        JButton calcBtn = new JButton("Calculate EMI");
-        calcBtn.setBackground(new Color(59, 130, 246));
-        calcBtn.setForeground(Color.WHITE);
-        calcBtn.addActionListener(e -> {
-            try {
-                double p = Double.parseDouble(principalField.getText().trim());
-                double r = Double.parseDouble(rateField.getText().trim());
-                int n = Integer.parseInt(tenureField.getText().trim());
-                FinancialCalculator.EmiResult res = FinancialCalculator.calculateEmi(p, r, n);
-                emiResultLabel.setText(String.format("Monthly EMI: $%,.2f", res.monthlyEmi));
-                totalResultLabel.setText(String.format("Interest: $%,.2f  |  Total: $%,.2f", res.totalInterest, res.totalAmount));
-            } catch (Exception ex) {
-                emiResultLabel.setText("Invalid Inputs");
-            }
-        });
-
-        JPanel inputs = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        inputs.setOpaque(false);
-        inputs.add(new JLabel("Principal ($):"));
-        inputs.add(principalField);
-        inputs.add(new JLabel("Rate (% p.a):"));
-        inputs.add(rateField);
-        inputs.add(new JLabel("Tenure (Months):"));
-        inputs.add(tenureField);
-        inputs.add(calcBtn);
-
-        card.add(inputs, BorderLayout.CENTER);
-
-        JPanel res = new JPanel(new GridLayout(2, 1, 2, 2));
-        res.setOpaque(false);
-        res.add(emiResultLabel);
-        res.add(totalResultLabel);
-        card.add(res, BorderLayout.SOUTH);
-
-        return card;
-    }
-
-    // Calculator 2: Compound Interest
-    private JPanel createCompoundInterestCard() {
-        JPanel card = createCalcCardTemplate("📈 COMPOUND WEALTH GROWTH (Formula: A = P(1 + r/n)^(nt))");
-
-        JTextField principalField = new JTextField("10000", 8);
-        JTextField rateField = new JTextField("12.0", 5);
-        JTextField yearsField = new JTextField("5", 4);
-        JComboBox<String> freqCombo = new JComboBox<>(new String[]{"Annually (1)", "Quarterly (4)", "Monthly (12)"});
-
-        JLabel maturityLabel = new JLabel("Future Maturity: $0.00");
-        maturityLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        maturityLabel.setForeground(new Color(52, 211, 153));
-
-        JLabel detailsLabel = new JLabel("Interest Earned: $0.00  |  Growth Multiplier: 1.0x");
-        detailsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        detailsLabel.setForeground(new Color(203, 213, 225));
-
-        JButton calcBtn = new JButton("Calculate Growth");
-        calcBtn.setBackground(new Color(16, 185, 129));
-        calcBtn.setForeground(Color.WHITE);
-        calcBtn.addActionListener(e -> {
-            try {
-                double p = Double.parseDouble(principalField.getText().trim());
-                double r = Double.parseDouble(rateField.getText().trim());
-                double t = Double.parseDouble(yearsField.getText().trim());
-                int n = freqCombo.getSelectedIndex() == 0 ? 1 : (freqCombo.getSelectedIndex() == 1 ? 4 : 12);
-                FinancialCalculator.CompoundInterestResult res = FinancialCalculator.calculateCompoundInterest(p, r, n, t);
-                maturityLabel.setText(String.format("Future Maturity: $%,.2f", res.futureValue));
-                detailsLabel.setText(String.format("Interest: $%,.2f  |  Growth: %.2fx", res.interestEarned, res.growthMultiplier));
-            } catch (Exception ex) {
-                maturityLabel.setText("Invalid Inputs");
-            }
-        });
-
-        JPanel inputs = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        inputs.setOpaque(false);
-        inputs.add(new JLabel("Principal:"));
-        inputs.add(principalField);
-        inputs.add(new JLabel("Rate (%):"));
-        inputs.add(rateField);
-        inputs.add(new JLabel("Years:"));
-        inputs.add(yearsField);
-        inputs.add(freqCombo);
-        inputs.add(calcBtn);
-
-        card.add(inputs, BorderLayout.CENTER);
-
-        JPanel res = new JPanel(new GridLayout(2, 1, 2, 2));
-        res.setOpaque(false);
-        res.add(maturityLabel);
-        res.add(detailsLabel);
-        card.add(res, BorderLayout.SOUTH);
-
-        return card;
-    }
-
-    // Calculator 3: SIP
-    private JPanel createSipCalculatorCard() {
-        JPanel card = createCalcCardTemplate("🎯 SIP / WEALTH BUILDER (Formula: M = P·[(1+i)^n - 1]/i·(1+i))");
-
-        JTextField monthlyField = new JTextField("250", 6);
-        JTextField returnRateField = new JTextField("14.0", 4);
-        JTextField durationField = new JTextField("60", 4);
-
-        JLabel maturityLabel = new JLabel("Expected Corpus: $0.00");
-        maturityLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        maturityLabel.setForeground(new Color(52, 211, 153));
-
-        JLabel detailsLabel = new JLabel("Invested: $0.00  |  Wealth Gain: $0.00");
-        detailsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        detailsLabel.setForeground(new Color(203, 213, 225));
-
-        JButton calcBtn = new JButton("Project SIP");
-        calcBtn.setBackground(new Color(168, 85, 247));
-        calcBtn.setForeground(Color.WHITE);
-        calcBtn.addActionListener(e -> {
-            try {
-                double p = Double.parseDouble(monthlyField.getText().trim());
-                double r = Double.parseDouble(returnRateField.getText().trim());
-                int n = Integer.parseInt(durationField.getText().trim());
-                FinancialCalculator.SipResult res = FinancialCalculator.calculateSip(p, r, n);
-                maturityLabel.setText(String.format("Expected Corpus: $%,.2f", res.totalMaturityValue));
-                detailsLabel.setText(String.format("Invested: $%,.2f  |  Gain: $%,.2f", res.totalInvested, res.estimatedReturns));
-            } catch (Exception ex) {
-                maturityLabel.setText("Invalid Inputs");
-            }
-        });
-
-        JPanel inputs = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        inputs.setOpaque(false);
-        inputs.add(new JLabel("Monthly ($):"));
-        inputs.add(monthlyField);
-        inputs.add(new JLabel("Return (%):"));
-        inputs.add(returnRateField);
-        inputs.add(new JLabel("Months:"));
-        inputs.add(durationField);
-        inputs.add(calcBtn);
-
-        card.add(inputs, BorderLayout.CENTER);
-
-        JPanel res = new JPanel(new GridLayout(2, 1, 2, 2));
-        res.setOpaque(false);
-        res.add(maturityLabel);
-        res.add(detailsLabel);
-        card.add(res, BorderLayout.SOUTH);
-
-        return card;
-    }
-
-    // Calculator 4: Discount & GST
-    private JPanel createDiscountTaxCard() {
-        JPanel card = createCalcCardTemplate("🏷️ DISCOUNT & GST/TAX ENGINE (Net = (Price - Disc) + GST)");
-
-        JTextField priceField = new JTextField("1200", 6);
-        JTextField discountField = new JTextField("15", 4);
-        JTextField gstField = new JTextField("18", 4);
-
-        JLabel payableLabel = new JLabel("Final Payable: $0.00");
-        payableLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        payableLabel.setForeground(new Color(52, 211, 153));
-
-        JLabel detailsLabel = new JLabel("Discount Savings: $0.00  |  Tax/GST: $0.00");
-        detailsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        detailsLabel.setForeground(new Color(203, 213, 225));
-
-        JButton calcBtn = new JButton("Calculate Net");
-        calcBtn.setBackground(new Color(245, 158, 11));
-        calcBtn.setForeground(Color.WHITE);
-        calcBtn.addActionListener(e -> {
-            try {
-                double p = Double.parseDouble(priceField.getText().trim());
-                double d = Double.parseDouble(discountField.getText().trim());
-                double g = Double.parseDouble(gstField.getText().trim());
-                FinancialCalculator.DiscountTaxResult res = FinancialCalculator.calculateDiscountAndTax(p, d, g);
-                payableLabel.setText(String.format("Final Payable: $%,.2f", res.finalPayable));
-                detailsLabel.setText(String.format("Savings: -$%,.2f  |  GST: +$%,.2f", res.discountSavings, res.taxAmount));
-            } catch (Exception ex) {
-                payableLabel.setText("Invalid Inputs");
-            }
-        });
-
-        JPanel inputs = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        inputs.setOpaque(false);
-        inputs.add(new JLabel("Price ($):"));
-        inputs.add(priceField);
-        inputs.add(new JLabel("Disc (%):"));
-        inputs.add(discountField);
-        inputs.add(new JLabel("GST (%):"));
-        inputs.add(gstField);
-        inputs.add(calcBtn);
-
-        card.add(inputs, BorderLayout.CENTER);
-
-        JPanel res = new JPanel(new GridLayout(2, 1, 2, 2));
-        res.setOpaque(false);
-        res.add(payableLabel);
-        res.add(detailsLabel);
-        card.add(res, BorderLayout.SOUTH);
-
-        return card;
-    }
-
-    private JPanel createCalcCardTemplate(String title) {
-        JPanel card = new JPanel(new BorderLayout(8, 8));
-        card.setBackground(new Color(30, 41, 59));
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(51, 65, 85), 1),
-                BorderFactory.createEmptyBorder(10, 12, 10, 12)
-        ));
-
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        titleLabel.setForeground(new Color(147, 197, 253));
-        card.add(titleLabel, BorderLayout.NORTH);
-
-        return card;
-    }
-
     private void updateView() {
         Budget b = service.getBudget();
-        totalBudgetVal.setText(String.format("$%,.2f", b.getTotalBudget()));
-        totalSpentVal.setText(String.format("$%,.2f", b.getCurrentSpent()));
-        remainingVal.setText(String.format("$%,.2f", b.getRemaining()));
+        double remaining = b.getRemaining();
+        double spent = b.getCurrentSpent();
+        double total = b.getTotalBudget();
 
-        double totalInc = 0;
-        for (Transaction t : service.getTransactions()) {
-            if (t.isIncome()) totalInc += t.getAbsoluteAmount();
-        }
-        incomeVal.setText(String.format("$%,.2f", totalInc));
+        totalBudgetVal.setText(String.format("$%,.2f", total));
+        totalSpentVal.setText(String.format("$%,.2f", spent));
+        remainingVal.setText(String.format("$%,.2f", remaining));
 
-        int percent = (int) Math.min(100, Math.max(0, (b.getCurrentSpent() / b.getTotalBudget()) * 100));
+        // AUTOMATED BACKGROUND FINANCIAL FORMULA CALCULATIONS:
+        // 1. Compound Interest Yield: 7.2% annual yield on remaining balance
+        FinancialCalculator.CompoundInterestResult ci = FinancialCalculator.calculateCompoundInterest(Math.max(0, remaining), 7.2, 12, 1.0);
+        interestYieldVal.setText(String.format("+$%,.2f/yr", ci.interestEarned));
+
+        // 2. Automated Debt & Loan EMI servicing: $50,000 @ 8.5% 36 months
+        FinancialCalculator.EmiResult emi = FinancialCalculator.calculateEmi(50000.0, 8.5, 36);
+        emiBurdenVal.setText(String.format("-$%,.2f/mo", emi.monthlyEmi));
+
+        // 3. Cash Flow Runway: remaining / average daily burn
+        double dailyBurn = Math.max(15.0, spent / 30.0);
+        int runwayDays = (int) (Math.max(0, remaining) / dailyBurn);
+        runwayVal.setText(runwayDays + " Days");
+
+        // Progress bar
+        int percent = (int) Math.min(100, Math.max(0, (spent / total) * 100));
         budgetProgressBar.setValue(percent);
-        budgetProgressBar.setString(percent + "% Used");
+        budgetProgressBar.setString(percent + "% Utilized");
         if (percent > 90) {
             budgetProgressBar.setForeground(new Color(239, 68, 68));
         } else if (percent > 70) {
@@ -548,9 +305,11 @@ public class FinancePanel extends JPanel implements NexusListener {
             budgetProgressBar.setForeground(new Color(16, 185, 129));
         }
 
+        // Pie chart
         Map<String, Double> breakdown = service.getCategoryBreakdown();
         pieChartPanel.setData(breakdown);
 
+        // Table
         tableModel.setRowCount(0);
         for (Transaction t : service.getTransactions()) {
             String dateStr = dateFormat.format(t.getDate());

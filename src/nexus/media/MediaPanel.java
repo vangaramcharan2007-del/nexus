@@ -13,6 +13,9 @@ public class MediaPanel extends JPanel implements NexusListener {
     private final MediaService service;
     private final ConcurrentHashMap<String, ImageIcon> posterCache = new ConcurrentHashMap<>();
 
+    // Movie Posters Map for Box Office
+    private final Map<String, String> moviePosterUrls = new HashMap<>();
+
     // Seat Allocation State
     private final Map<String, CinemaSeat> seatMap = new LinkedHashMap<>();
     private final Map<String, JButton> seatButtons = new HashMap<>();
@@ -27,10 +30,11 @@ public class MediaPanel extends JPanel implements NexusListener {
     private double currentDiscount = 0.0;
     private String currentPromoCode = "";
 
-    // Cinema Form Pickers
+    // Cinema Form Pickers & Poster Preview
     private JComboBox<String> movieCombo;
     private JComboBox<String> theatreCombo;
     private JComboBox<String> showtimeCombo;
+    private JLabel moviePosterPreviewLabel;
 
     // Tabs
     private JTabbedPane mainTabs;
@@ -43,6 +47,8 @@ public class MediaPanel extends JPanel implements NexusListener {
         this.service = service;
         setLayout(new BorderLayout());
         setBackground(new Color(15, 23, 42));
+
+        initMoviePosterMap();
 
         mainTabs = new JTabbedPane();
         mainTabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -58,7 +64,7 @@ public class MediaPanel extends JPanel implements NexusListener {
 
         add(mainTabs, BorderLayout.CENTER);
 
-        // EventBus Subscriptions
+        // Subscriptions
         EventBus.getInstance().subscribe("BOOKINGS_UPDATED", this);
         EventBus.getInstance().subscribe("MEDIA_UPDATED", this);
         EventBus.getInstance().subscribe("MEDIA_SEARCH_RESULTS", this);
@@ -67,19 +73,39 @@ public class MediaPanel extends JPanel implements NexusListener {
         renderWatchlist(service.getMediaItems());
     }
 
+    private void initMoviePosterMap() {
+        moviePosterUrls.put("Dune: Part Two (IMAX 3D)", "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg");
+        moviePosterUrls.put("Interstellar (10th Anniv Re-Release)", "https://static.tvmaze.com/uploads/images/medium_portrait/6/16463.jpg");
+        moviePosterUrls.put("Avengers: Secret Wars (Atmos 7.1)", "https://static.tvmaze.com/uploads/images/medium_portrait/1/3603.jpg");
+        moviePosterUrls.put("Deadpool & Wolverine (4DX)", "https://static.tvmaze.com/uploads/images/medium_portrait/507/1269689.jpg");
+        moviePosterUrls.put("Oppenheimer (70mm IMAX)", "https://static.tvmaze.com/uploads/images/medium_portrait/478/1197412.jpg");
+    }
+
     // --- TAB 1: BOOKMYSHOW BOX OFFICE ---
     private JPanel createBoxOfficePanel() {
         JPanel panel = new JPanel(new BorderLayout(15, 10));
         panel.setBackground(new Color(15, 23, 42));
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // Top Cinema Selector
-        JPanel selectorBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 6));
-        selectorBar.setBackground(new Color(30, 41, 59));
-        selectorBar.setBorder(BorderFactory.createCompoundBorder(
+        // Top Cinema Selector with Poster Preview
+        JPanel topContainer = new JPanel(new BorderLayout(12, 0));
+        topContainer.setBackground(new Color(30, 41, 59));
+        topContainer.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(51, 65, 85)),
-                BorderFactory.createEmptyBorder(6, 10, 6, 10)
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
+
+        // Left Movie Poster Thumbnail in Selector
+        moviePosterPreviewLabel = new JLabel();
+        moviePosterPreviewLabel.setPreferredSize(new Dimension(50, 70));
+        moviePosterPreviewLabel.setOpaque(true);
+        moviePosterPreviewLabel.setBackground(new Color(15, 23, 42));
+        moviePosterPreviewLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        topContainer.add(moviePosterPreviewLabel, BorderLayout.WEST);
+
+        // Pickers Bar
+        JPanel selectorBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 8));
+        selectorBar.setOpaque(false);
 
         String[] movies = {
                 "Dune: Part Two (IMAX 3D)",
@@ -89,6 +115,7 @@ public class MediaPanel extends JPanel implements NexusListener {
                 "Oppenheimer (70mm IMAX)"
         };
         movieCombo = new JComboBox<>(movies);
+        movieCombo.addActionListener(e -> updateMoviePosterPreview());
 
         String[] theatres = {
                 "PVR Grand Galada, Chennai (Audi 1 - IMAX 3D)",
@@ -107,14 +134,17 @@ public class MediaPanel extends JPanel implements NexusListener {
         };
         showtimeCombo = new JComboBox<>(showtimes);
 
-        selectorBar.add(new JLabel("Movie:"));
+        selectorBar.add(new JLabel("Featured Film:"));
         selectorBar.add(movieCombo);
-        selectorBar.add(new JLabel("Cinema:"));
+        selectorBar.add(new JLabel("Multiplex:"));
         selectorBar.add(theatreCombo);
-        selectorBar.add(new JLabel("Show:"));
+        selectorBar.add(new JLabel("Showtime:"));
         selectorBar.add(showtimeCombo);
 
-        panel.add(selectorBar, BorderLayout.NORTH);
+        topContainer.add(selectorBar, BorderLayout.CENTER);
+        panel.add(topContainer, BorderLayout.NORTH);
+
+        updateMoviePosterPreview();
 
         // Center Split: Left = Seat Matrix | Right = Checkout & Promo
         JPanel centerGrid = new JPanel(new BorderLayout(15, 0));
@@ -128,7 +158,6 @@ public class MediaPanel extends JPanel implements NexusListener {
                 BorderFactory.createEmptyBorder(10, 14, 10, 14)
         ));
 
-        // Screen Graphic
         JLabel screenLabel = new JLabel("--- 🎬 CINEMA SCREEN THIS WAY (ALL EYES FRONT) 🎬 ---", SwingConstants.CENTER);
         screenLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
         screenLabel.setForeground(new Color(56, 189, 248));
@@ -137,24 +166,22 @@ public class MediaPanel extends JPanel implements NexusListener {
         screenLabel.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
         seatArea.add(screenLabel, BorderLayout.NORTH);
 
-        // 60-Seat Interactive Grid (6 rows × 10 cols)
         JPanel grid = new JPanel(new GridLayout(6, 10, 6, 6));
         grid.setOpaque(false);
         initSeatMatrix(grid);
         seatArea.add(grid, BorderLayout.CENTER);
 
-        // Seat Legend
-        JPanel legend = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 4));
+        JPanel legend = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 4));
         legend.setOpaque(false);
         legend.add(createLegendChip("Available", new Color(51, 65, 85)));
         legend.add(createLegendChip("Selected", new Color(16, 185, 129)));
         legend.add(createLegendChip("Booked", new Color(220, 38, 38)));
-        legend.add(new JLabel("• VIP (A-B): $350 | Club (C-D): $250 | Exec (E-F): $150"));
+        legend.add(new JLabel("• VIP Recliner: $350 | Club: $250 | Executive: $150"));
         seatArea.add(legend, BorderLayout.SOUTH);
 
         centerGrid.add(seatArea, BorderLayout.CENTER);
 
-        // RIGHT CHECKOUT & PROMO PANEL
+        // Right Checkout Panel
         JPanel checkoutPanel = createCheckoutPanel();
         checkoutPanel.setPreferredSize(new Dimension(320, 400));
         centerGrid.add(checkoutPanel, BorderLayout.EAST);
@@ -163,13 +190,19 @@ public class MediaPanel extends JPanel implements NexusListener {
         return panel;
     }
 
+    private void updateMoviePosterPreview() {
+        String movie = (String) movieCombo.getSelectedItem();
+        String url = moviePosterUrls.getOrDefault(movie, "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg");
+        loadPosterAsync(url, moviePosterPreviewLabel, 50, 70);
+    }
+
     private void initSeatMatrix(JPanel grid) {
         seatMap.clear();
         seatButtons.clear();
         selectedSeatCodes.clear();
 
         char[] rows = {'A', 'B', 'C', 'D', 'E', 'F'};
-        Random rnd = new Random(42); // Deterministic booked seats for demo
+        Random rnd = new Random(42);
 
         for (char row : rows) {
             String tier;
@@ -188,7 +221,7 @@ public class MediaPanel extends JPanel implements NexusListener {
             for (int col = 1; col <= 10; col++) {
                 String code = "" + row + col;
                 CinemaSeat seat = new CinemaSeat(code, tier, price);
-                if (rnd.nextDouble() < 0.22) { // 22% pre-booked
+                if (rnd.nextDouble() < 0.22) {
                     seat.setBooked(true);
                 }
                 seatMap.put(code, seat);
@@ -202,11 +235,9 @@ public class MediaPanel extends JPanel implements NexusListener {
                     btn.setBackground(new Color(220, 38, 38));
                     btn.setForeground(Color.WHITE);
                     btn.setEnabled(false);
-                    btn.setToolTipText("Occupied / Sold Out");
                 } else {
                     btn.setBackground(new Color(51, 65, 85));
                     btn.setForeground(Color.WHITE);
-                    btn.setToolTipText(tier + " - $" + price);
                     btn.addActionListener(e -> toggleSeat(code, btn));
                 }
 
@@ -227,9 +258,8 @@ public class MediaPanel extends JPanel implements NexusListener {
         } else {
             selectedSeatCodes.add(code);
             seat.setSelected(true);
-            btn.setBackground(new Color(16, 185, 129)); // Selected Green
+            btn.setBackground(new Color(16, 185, 129));
         }
-
         updatePricingSummary();
     }
 
@@ -246,15 +276,12 @@ public class MediaPanel extends JPanel implements NexusListener {
         double subtotal = 0;
         for (String code : selectedSeatCodes) {
             CinemaSeat seat = seatMap.get(code);
-            if (seat != null) {
-                subtotal += seat.getPrice();
-            }
+            if (seat != null) subtotal += seat.getPrice();
         }
 
         selectedSeatsLabel.setText(String.join(", ", selectedSeatCodes));
         subtotalLabel.setText(String.format("$%,.2f", subtotal));
 
-        // Apply discount if any
         currentDiscount = service.calculateDiscount(subtotal, currentPromoCode);
         discountLabel.setText(String.format("-$%,.2f (%s)", currentDiscount, currentPromoCode.isEmpty() ? "None" : currentPromoCode));
 
@@ -275,7 +302,6 @@ public class MediaPanel extends JPanel implements NexusListener {
         title.setForeground(new Color(56, 189, 248));
         panel.add(title, BorderLayout.NORTH);
 
-        // Center Details
         JPanel details = new JPanel(new GridLayout(6, 1, 4, 4));
         details.setOpaque(false);
 
@@ -300,7 +326,6 @@ public class MediaPanel extends JPanel implements NexusListener {
         details.add(createRow("Applied Discount:", discountLabel));
         details.add(createRow("Total Amount:", totalPayableLabel));
 
-        // Promo Code Row
         JPanel promoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         promoRow.setOpaque(false);
         promoCodeField = new JTextField(8);
@@ -323,14 +348,13 @@ public class MediaPanel extends JPanel implements NexusListener {
         promoRow.add(applyPromoBtn);
         details.add(promoRow);
 
-        JLabel hints = new JLabel("Coupons: SRMSTUDENT (25%) | NEXUS50 ($50 off)");
+        JLabel hints = new JLabel("Coupons: SRMSTUDENT (25%) | NEXUS50 ($50)");
         hints.setFont(new Font("Segoe UI", Font.ITALIC, 10));
         hints.setForeground(new Color(156, 163, 175));
         details.add(hints);
 
         panel.add(details, BorderLayout.CENTER);
 
-        // Bottom Confirm Button
         JButton bookBtn = new JButton("🎟️ Confirm & Generate Pass");
         bookBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         bookBtn.setBackground(new Color(16, 185, 129));
@@ -364,7 +388,6 @@ public class MediaPanel extends JPanel implements NexusListener {
         CinemaBooking booking = service.createBooking(movie, theatre, show, new ArrayList<>(selectedSeatCodes), 
                 subtotal, currentDiscount, currentPromoCode, payable);
 
-        // Mark seats booked in local matrix
         for (String code : selectedSeatCodes) {
             CinemaSeat seat = seatMap.get(code);
             if (seat != null) seat.setBooked(true);
@@ -377,18 +400,16 @@ public class MediaPanel extends JPanel implements NexusListener {
         selectedSeatCodes.clear();
         updatePricingSummary();
 
-        // Show Digital Boarding Ticket Pass Modal
         showDigitalTicketDialog(booking);
-
-        mainTabs.setSelectedIndex(1); // Switch to My Bookings tab
+        mainTabs.setSelectedIndex(1);
     }
 
     private void showDigitalTicketDialog(CinemaBooking b) {
         JDialog dlg = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Digital Cinema Pass - Confirmed", true);
-        dlg.setSize(440, 380);
+        dlg.setSize(520, 400);
         dlg.setLocationRelativeTo(this);
 
-        JPanel p = new JPanel(new BorderLayout(10, 10));
+        JPanel p = new JPanel(new BorderLayout(12, 10));
         p.setBackground(new Color(24, 30, 42));
         p.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
@@ -397,34 +418,49 @@ public class MediaPanel extends JPanel implements NexusListener {
         header.setForeground(new Color(56, 189, 248));
         p.add(header, BorderLayout.NORTH);
 
+        // Left Poster in Ticket Dialog!
+        JLabel ticketPosterLabel = new JLabel();
+        ticketPosterLabel.setPreferredSize(new Dimension(110, 160));
+        ticketPosterLabel.setOpaque(true);
+        ticketPosterLabel.setBackground(new Color(15, 23, 42));
+        ticketPosterLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        String posterUrl = moviePosterUrls.getOrDefault(b.getMovieTitle(), "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg");
+        loadPosterAsync(posterUrl, ticketPosterLabel, 110, 160);
+
+        JPanel centerPanel = new JPanel(new BorderLayout(10, 0));
+        centerPanel.setOpaque(false);
+        centerPanel.add(ticketPosterLabel, BorderLayout.WEST);
+
         JTextArea info = new JTextArea();
         info.setFont(new Font("Consolas", Font.PLAIN, 12));
         info.setEditable(false);
         info.setBackground(new Color(15, 23, 42));
         info.setForeground(Color.WHITE);
         info.setText(String.format("""
-                ========================================
                 BOOKING REF : %s
                 STATUS      : CONFIRMED (PAID)
-                ========================================
+                -----------------------------------
                 MOVIE       : %s
                 THEATRE     : %s
                 SHOWTIME    : %s
                 SEATS       : %s
-                ----------------------------------------
-                SUBTOTAL    : $%.2f
+                -----------------------------------
+                BASE FARE   : $%.2f
                 DISCOUNT    : -$%.2f (%s)
                 TOTAL PAID  : $%.2f
-                ========================================
-                [|||  ||||| ||  ||||||||| | ||||| |||  ]
-                SCAN QR/BARCODE AT CINEMA ADMISSION GATE
+                ===================================
+                [|||  ||||| ||  ||||||||| | ||||| ]
+                VALID FOR CINEMA ADMISSION GATE
                 """,
                 b.getId(), b.getMovieTitle(), b.getTheatre(), b.getShowTime(),
                 b.getSeatsFormatted(), b.getBasePrice(), b.getDiscount(), b.getPromoCode(), b.getFinalTotal()));
 
-        p.add(new JScrollPane(info), BorderLayout.CENTER);
+        centerPanel.add(new JScrollPane(info), BorderLayout.CENTER);
+        p.add(centerPanel, BorderLayout.CENTER);
 
-        JButton close = new JButton("Dismiss Pass");
+        JButton close = new JButton("Close & Save to Passbook");
+        close.setBackground(new Color(16, 185, 129));
+        close.setForeground(Color.WHITE);
         close.addActionListener(e -> dlg.dispose());
         p.add(close, BorderLayout.SOUTH);
 
@@ -499,7 +535,17 @@ public class MediaPanel extends JPanel implements NexusListener {
                 BorderFactory.createMatteBorder(0, 4, 0, 0, new Color(16, 185, 129)),
                 BorderFactory.createEmptyBorder(10, 14, 10, 14)
         ));
-        card.setMaximumSize(new Dimension(2000, 95));
+        card.setMaximumSize(new Dimension(2000, 105));
+
+        // Poster image thumbnail on each card!
+        JLabel cardPosterLabel = new JLabel();
+        cardPosterLabel.setPreferredSize(new Dimension(50, 75));
+        cardPosterLabel.setOpaque(true);
+        cardPosterLabel.setBackground(new Color(15, 23, 42));
+        cardPosterLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        String posterUrl = moviePosterUrls.getOrDefault(b.getMovieTitle(), "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg");
+        loadPosterAsync(posterUrl, cardPosterLabel, 50, 75);
+        card.add(cardPosterLabel, BorderLayout.WEST);
 
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
@@ -537,7 +583,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         price.setFont(new Font("Segoe UI", Font.BOLD, 14));
         price.setForeground(Color.WHITE);
 
-        JButton viewPassBtn = new JButton("View Ticket");
+        JButton viewPassBtn = new JButton("View Pass");
         viewPassBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         viewPassBtn.setBackground(new Color(59, 130, 246));
         viewPassBtn.setForeground(Color.WHITE);
@@ -558,12 +604,11 @@ public class MediaPanel extends JPanel implements NexusListener {
         panel.setBackground(new Color(15, 23, 42));
         panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // Search Bar
         JPanel searchBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         searchBar.setBackground(new Color(30, 41, 59));
         searchBar.setBorder(BorderFactory.createLineBorder(new Color(51, 65, 85)));
 
-        searchField = new JTextField("Batman", 18);
+        searchField = new JTextField("Avengers", 18);
         JButton searchBtn = new JButton("🔍 Search IMDb / TVMaze");
         searchBtn.setBackground(new Color(59, 130, 246));
         searchBtn.setForeground(Color.WHITE);
@@ -577,13 +622,11 @@ public class MediaPanel extends JPanel implements NexusListener {
         searchBar.add(searchBtn);
         panel.add(searchBar, BorderLayout.NORTH);
 
-        // Center split: Watchlist (top) and Search Results (bottom)
         JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         split.setResizeWeight(0.5);
         split.setOpaque(false);
         split.setBorder(null);
 
-        // Watchlist
         watchlistGrid = new JPanel();
         watchlistGrid.setLayout(new BoxLayout(watchlistGrid, BoxLayout.Y_AXIS));
         watchlistGrid.setBackground(new Color(20, 24, 33));
@@ -591,7 +634,6 @@ public class MediaPanel extends JPanel implements NexusListener {
         ws.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(51, 65, 85)), "Personal Watchlist", 0, 0, new Font("Segoe UI", Font.BOLD, 12), Color.CYAN));
         split.setTopComponent(ws);
 
-        // Search Results
         liveSearchGrid = new JPanel();
         liveSearchGrid.setLayout(new BoxLayout(liveSearchGrid, BoxLayout.Y_AXIS));
         liveSearchGrid.setBackground(new Color(20, 24, 33));
@@ -609,7 +651,14 @@ public class MediaPanel extends JPanel implements NexusListener {
             JPanel card = new JPanel(new BorderLayout(10, 0));
             card.setBackground(new Color(30, 41, 59));
             card.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-            card.setMaximumSize(new Dimension(2000, 45));
+            card.setMaximumSize(new Dimension(2000, 55));
+
+            JLabel poster = new JLabel();
+            poster.setPreferredSize(new Dimension(35, 45));
+            poster.setOpaque(true);
+            poster.setBackground(new Color(15, 23, 42));
+            loadPosterAsync(item.getPosterUrl(), poster, 35, 45);
+            card.add(poster, BorderLayout.WEST);
 
             JLabel title = new JLabel(item.getTitle() + " (" + item.getType() + ") - " + item.getStatus() + " ★" + item.getRating());
             title.setForeground(Color.WHITE);
@@ -634,7 +683,14 @@ public class MediaPanel extends JPanel implements NexusListener {
             JPanel card = new JPanel(new BorderLayout(10, 0));
             card.setBackground(new Color(30, 41, 59));
             card.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-            card.setMaximumSize(new Dimension(2000, 55));
+            card.setMaximumSize(new Dimension(2000, 65));
+
+            JLabel poster = new JLabel();
+            poster.setPreferredSize(new Dimension(40, 55));
+            poster.setOpaque(true);
+            poster.setBackground(new Color(15, 23, 42));
+            loadPosterAsync(item.getPosterUrl(), poster, 40, 55);
+            card.add(poster, BorderLayout.WEST);
 
             JLabel title = new JLabel(item.getTitle() + " (" + item.getYear() + ") ⭐ " + item.getRatingScore() + "/10 - " + item.getGenres());
             title.setForeground(Color.WHITE);
@@ -656,6 +712,32 @@ public class MediaPanel extends JPanel implements NexusListener {
         }
         liveSearchGrid.revalidate();
         liveSearchGrid.repaint();
+    }
+
+    private void loadPosterAsync(String url, JLabel label, int width, int height) {
+        if (url == null || url.isEmpty()) {
+            label.setText("🎬");
+            label.setForeground(Color.GRAY);
+            return;
+        }
+        if (posterCache.containsKey(url)) {
+            label.setIcon(posterCache.get(url));
+            label.setText("");
+            return;
+        }
+        label.setText("⌛");
+        new Thread(() -> {
+            ImageIcon icon = RealtimeMediaService.loadScaledPoster(url, width, height);
+            SwingUtilities.invokeLater(() -> {
+                if (icon != null) {
+                    posterCache.put(url, icon);
+                    label.setIcon(icon);
+                    label.setText("");
+                } else {
+                    label.setText("🎬");
+                }
+            });
+        }).start();
     }
 
     @Override

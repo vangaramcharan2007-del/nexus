@@ -51,20 +51,28 @@ public class Review2VerificationRunner {
             System.err.println("   ✗ Crypto Feed Error: " + e.getMessage());
         }
 
-        // 2. VERIFY REAL-TIME TVMAZE / IMDB FEED
-        System.out.println("\n[2/7] Testing Live TVMaze Entertainment Database API...");
+        // 2. VERIFY REAL-TIME TVMAZE / IMDB FEED & AMAZON INDIA STOREFRONT
+        System.out.println("\n[2/7] Testing Live TVMaze & Amazon India Gateways...");
         try {
             List<MediaItem> shows = RealtimeMediaService.searchShowsOnline("Avengers");
-            for (int i = 0; i < Math.min(3, shows.size()); i++) {
+            for (int i = 0; i < Math.min(2, shows.size()); i++) {
                 MediaItem m = shows.get(i);
-                System.out.printf("   ✓ '%s' (%s) | Rating: ★%.1f/10 | Genres: %s\n", 
+                System.out.printf("   ✓ TVMaze: '%s' (%s) | Rating: ★%.1f/10 | Genres: %s\n", 
                         m.getTitle(), m.getYear(), m.getRatingScore(), m.getGenres());
             }
-            if (!shows.isEmpty()) {
-                System.out.println("   >>> STATUS: REAL-TIME TVMAZE MEDIA API ONLINE & OPERATIONAL!");
+
+            List<nexus.market.Product> amazonItems = nexus.realtime.WebMarketScraper.scrapeMarket("laptop");
+            for (int i = 0; i < Math.min(3, amazonItems.size()); i++) {
+                nexus.market.Product p = amazonItems.get(i);
+                System.out.printf("   ✓ Amazon.in: %s | Price: ₹%,.0f | Image Loaded: %s\n",
+                        p.getName(), p.getPrice(), p.getImage() != null ? "YES" : "NO");
+            }
+
+            if (!amazonItems.isEmpty() && !shows.isEmpty()) {
+                System.out.println("   >>> STATUS: REAL-TIME AMAZON & TVMAZE GATEWAYS ONLINE & OPERATIONAL!");
             }
         } catch (Exception e) {
-            System.err.println("   ✗ Media Feed Error: " + e.getMessage());
+            System.err.println("   ✗ Gateway Error: " + e.getMessage());
         }
 
         // 3. VERIFY REAL-TIME SRM KATTANKULATHUR WEATHER TELEMETRY
@@ -154,6 +162,8 @@ public class Review2VerificationRunner {
             System.out.printf("   ✓ SQLite Watchlist Loaded: %d records\n", loadedMedia.size());
             System.out.printf("   ✓ SQLite Cinema Bookings Loaded: %d records\n", loadedBookings.size());
             System.out.println("   >>> STATUS: PERSISTENCE ENGINE 100% OPERATIONAL!");
+            db.close();
+            Thread.sleep(200);
         } catch (Exception e) {
             System.err.println("   ✗ Database Error: " + e.getMessage());
         }

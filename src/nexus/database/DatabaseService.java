@@ -42,16 +42,18 @@ public class DatabaseService implements NexusListener {
         initDatabase();
         EventBus.getInstance().subscribeToAll(this);
         
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            dbWriterQueue.shutdown();
-            try {
-                if (writeConnection != null && !writeConnection.isClosed()) {
-                    writeConnection.close();
-                }
-            } catch (SQLException e) {
-                e.printStackTrace();
+        Runtime.getRuntime().addShutdownHook(new Thread(this::close));
+    }
+
+    public void close() {
+        dbWriterQueue.shutdown();
+        try {
+            if (writeConnection != null && !writeConnection.isClosed()) {
+                writeConnection.close();
             }
-        }));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     private void initDatabase() {
@@ -318,6 +320,9 @@ public class DatabaseService implements NexusListener {
 
     @Override
     public void onEvent(NexusEvent event) {
+        if (dbWriterQueue == null || dbWriterQueue.isShutdown()) {
+            return;
+        }
         String type = event.getType();
         Object payload = event.getPayload();
         

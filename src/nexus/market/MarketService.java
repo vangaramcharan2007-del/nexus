@@ -9,26 +9,33 @@ import java.util.List;
 public class MarketService implements NexusListener {
     private List<Product> availableProducts;
     private ShoppingCart cart;
+    private boolean loading;
     
     public MarketService() {
         availableProducts = new ArrayList<>();
         cart = new ShoppingCart();
-        
-        availableProducts.add(new Product("Laptop", 1200.00));
-        availableProducts.add(new Product("Mouse", 25.50));
-        availableProducts.add(new Product("Keyboard", 75.00));
+        loading = false;
         
         EventBus.getInstance().subscribe("XP_UPDATED", this);
 
+        // Fetch initial Amazon products
+        searchMarket("laptop");
+    }
+
+    public void searchMarket(String query) {
+        loading = true;
+        EventBus.getInstance().publish(new NexusEvent("MARKET_LOADING", true, "Market"));
         new Thread(() -> {
-            List<Product> scrapedProducts = nexus.realtime.WebMarketScraper.scrapeMarket("laptop");
+            List<Product> scrapedProducts = nexus.realtime.WebMarketScraper.scrapeMarket(query);
             availableProducts.clear();
             availableProducts.addAll(scrapedProducts);
+            loading = false;
             EventBus.getInstance().publish(new NexusEvent("MARKET_UPDATED", null, "Market"));
         }).start();
     }
     
     public List<Product> getAvailableProducts() { return availableProducts; }
+    public boolean isLoading() { return loading; }
     
     public void addToCart(Product product, int quantity) {
         cart.addItem(product, quantity);
@@ -62,4 +69,3 @@ public class MarketService implements NexusListener {
         }
     }
 }
-
