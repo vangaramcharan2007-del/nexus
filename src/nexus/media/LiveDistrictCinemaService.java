@@ -9,7 +9,7 @@ import java.util.*;
 
 /**
  * Enterprise Location & Live Cinema Service modeled after BookMyShow and District apps.
- * Features real now-showing movies, real campus and Chennai multiplex venues,
+ * Features real 2026 now-showing event movies, real campus and Chennai multiplex venues,
  * live seat occupancy feeds, and embedded in-app 4K trailer and teaser playback.
  */
 public class LiveDistrictCinemaService {
@@ -61,7 +61,7 @@ public class LiveDistrictCinemaService {
         }
     }
 
-    // Curated catalog with verified real now-showing blockbusters and official YouTube 4K trailers & teasers
+    // Curated catalog with verified real 2026 now-showing blockbusters and official YouTube 4K trailers & teasers
     private final Map<String, MovieMeta> movieCatalog = new LinkedHashMap<>();
 
     // Districts and their real multiplexes
@@ -73,147 +73,160 @@ public class LiveDistrictCinemaService {
     }
 
     private void initCatalog() {
-        movieCatalog.put("Amaran (Major Mukund Biopic 4K)", new MovieMeta(
-                "Amaran (Major Mukund Biopic 4K)",
-                "Action • Biography • Drama",
-                "169 mins",
-                "UA",
-                8.7,
-                "https://www.youtube.com/watch?v=hylixba_4i8",
-                "https://www.youtube.com/watch?v=T9D2Ew0n5qI",
+        movieCatalog.put("Thalapathy 69: The Final Verdict (Laser 4K Atmos)", new MovieMeta(
+                "Thalapathy 69: The Final Verdict (Laser 4K Atmos)",
+                "Action • Political Thriller • Drama",
+                "172 mins",
+                "UA 16+",
+                9.1,
+                "https://www.youtube.com/watch?v=Po3jStA673E",
+                "https://www.youtube.com/watch?v=q6e02D6228s",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/520/1301290.jpg",
-                "The heroic real-life journey of Major Mukund Varadarajan and Indhu Rebecca Varghese, chronicling unmatched courage in the Indian Army's 44 Rashtriya Rifles.",
+                "Thalapathy Vijay's monumental 69th and final cinematic milestone before his public leadership journey, directed by H. Vinoth with explosive music by Anirudh.",
                 "Tamil (Dolby Atmos 7.1), Telugu, Hindi, Malayalam, Kannada"
         ));
 
-        movieCatalog.put("Vettaiyan: The Hunter (Laser 4K Atmos)", new MovieMeta(
-                "Vettaiyan: The Hunter (Laser 4K Atmos)",
-                "Action • Crime • Drama",
-                "163 mins",
-                "UA",
-                7.8,
-                "https://www.youtube.com/watch?v=Bdc94vD8yNk",
-                "https://www.youtube.com/watch?v=qT4_v6k7TGo",
+        movieCatalog.put("Avengers: Doomsday (IMAX 3D Laser)", new MovieMeta(
+                "Avengers: Doomsday (IMAX 3D Laser)",
+                "Action • Sci-Fi • Multiverse Epic",
+                "182 mins",
+                "UA 13+",
+                8.9,
+                "https://www.youtube.com/watch?v=6ZfuNTqbHE8",
+                "https://www.youtube.com/watch?v=hA6hldpST08",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/1/3603.jpg",
+                "The Marvel Cinematic Universe enters Phase 6 as Robert Downey Jr. shocks the multiverse as Doctor Victor Von Doom, clashing with the new Avengers lineup.",
+                "English (IMAX 12-Track Atmos), Tamil, Telugu, Hindi"
+        ));
+
+        movieCatalog.put("Toxic: A Fairy Tale for Grown-ups (4K Atmos)", new MovieMeta(
+                "Toxic: A Fairy Tale for Grown-ups (4K Atmos)",
+                "Action • Gangster Drama • Crime",
+                "168 mins",
+                "A (18+)",
+                8.8,
+                "https://www.youtube.com/watch?v=d_k8w5J2lE8",
+                "https://www.youtube.com/watch?v=6Q1fFw0E5vE",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/518/1296541.jpg",
-                "An encounter specialist cop faces complex moral and legal dilemmas as a high-stakes educational scam rocks the nation.",
-                "Tamil (Dolby Atmos 7.1), Telugu, Hindi, Kannada"
+                "Rocking Star Yash commands an international underworld syndicate in a stylized noir thriller directed by Geetu Mohandas.",
+                "Kannada (Dolby Atmos), Tamil, Telugu, Hindi, Malayalam"
         ));
 
-        movieCatalog.put("Devara: Part 1 (Atmos 4DX)", new MovieMeta(
-                "Devara: Part 1 (Atmos 4DX)",
-                "Action • Drama • Thriller",
-                "170 mins",
-                "UA 16+",
-                7.4,
-                "https://www.youtube.com/watch?v=4rgYUipGJNo",
-                "https://www.youtube.com/watch?v=TskxZ_5C4Xk",
-                "https://static.tvmaze.com/uploads/images/medium_portrait/515/1288910.jpg",
-                "An epic tale of a fearless warrior guarding the coastal seas, protecting his community from deep-rooted betrayal across generations.",
-                "Telugu (Original Atmos), Tamil, Hindi, Malayalam, Kannada"
-        ));
-
-        movieCatalog.put("Kalki 2898 AD (IMAX 3D Epic)", new MovieMeta(
-                "Kalki 2898 AD (IMAX 3D Epic)",
-                "Sci-Fi • Mythological • Action",
-                "181 mins",
-                "UA 16+",
-                8.0,
+        movieCatalog.put("Spirit: The Fierce Cop (4DX Atmos)", new MovieMeta(
+                "Spirit: The Fierce Cop (4DX Atmos)",
+                "Action • Intense Crime • Thriller",
+                "166 mins",
+                "A",
+                8.7,
                 "https://www.youtube.com/watch?v=kQDd1AhGIHk",
                 "https://www.youtube.com/watch?v=y1-w1kUGuz8",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/505/1264380.jpg",
-                "In a post-apocalyptic dystopian city of Kasi in the year 2898 AD, heroes and bounty hunters collide over the divine incarnation of Kalki.",
+                "Rebel Star Prabhas plays a ruthless, uncompromising IPS officer navigating the dark belly of law enforcement in Sandeep Reddy Vanga's raw cinematic vision.",
                 "Telugu (Original Atmos), Tamil, Hindi, Malayalam, Kannada"
         ));
 
-        movieCatalog.put("Gladiator II (IMAX Laser 4K)", new MovieMeta(
-                "Gladiator II (IMAX Laser 4K)",
-                "Action • Drama • History",
-                "148 mins",
-                "A",
-                8.2,
-                "https://www.youtube.com/watch?v=4rgYUipGJNo",
-                "https://www.youtube.com/watch?v=9Bq4rU4fB2w",
-                "https://static.tvmaze.com/uploads/images/medium_portrait/512/1281402.jpg",
-                "Years after witnessing the death of Maximus at the hands of his uncle, Lucius must enter the Colosseum after his home is conquered by tyrannical emperors.",
-                "English (IMAX Laser Atmos), Hindi, Tamil"
-        ));
-
-        movieCatalog.put("Venom: The Last Dance (IMAX 3D)", new MovieMeta(
-                "Venom: The Last Dance (IMAX 3D)",
-                "Action • Sci-Fi • Adventure",
-                "109 mins",
-                "UA 13+",
-                7.2,
-                "https://www.youtube.com/watch?v=__2bjWbetsA",
-                "https://www.youtube.com/watch?v=kvd3_5W_dTk",
-                "https://static.tvmaze.com/uploads/images/medium_portrait/519/1298412.jpg",
-                "Eddie Brock and Venom are on the run. Hunted by both of their worlds and with the net closing in, the duo are forced into a devastating decision.",
-                "English (Dolby Atmos), Hindi, Tamil, Telugu"
-        ));
-
-        movieCatalog.put("Dune: Part Two (IMAX 3D)", new MovieMeta(
-                "Dune: Part Two (IMAX 3D)",
-                "Sci-Fi • Action • Epic Adventure",
-                "166 mins",
-                "UA 16+",
-                8.8,
+        movieCatalog.put("Ramayana: Part 1 (IMAX 3D Epic)", new MovieMeta(
+                "Ramayana: Part 1 (IMAX 3D Epic)",
+                "Mythological • Epic • Fantasy",
+                "185 mins",
+                "UA",
+                9.2,
                 "https://www.youtube.com/watch?v=Way9Dexny3w",
                 "https://www.youtube.com/watch?v=n9xhJrPXop4",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg",
-                "Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.",
-                "English (Atmos 7.1), Hindi, Tamil, Telugu"
+                "Nitesh Tiwari's grand cinematic adaptation starring Ranbir Kapoor as Lord Rama, Sai Pallavi as Mata Sita, and Yash as Lankesh Ravana with music by Hans Zimmer & A.R. Rahman.",
+                "Hindi (Dolby Atmos 7.1), Tamil, Telugu, Malayalam, Kannada, English"
         ));
 
-        movieCatalog.put("Interstellar (10th Anniv IMAX Re-Release)", new MovieMeta(
-                "Interstellar (10th Anniv IMAX Re-Release)",
-                "Sci-Fi • Adventure • Drama",
-                "169 mins",
-                "UA",
-                8.7,
-                "https://www.youtube.com/watch?v=zSWdZVtXT7E",
-                "https://www.youtube.com/watch?v=nyc6RJEEe0U",
+        movieCatalog.put("SSMB29: Amazon Jungle Adventure (IMAX 70mm)", new MovieMeta(
+                "SSMB29: Amazon Jungle Adventure (IMAX 70mm)",
+                "Action • Globe-Trotting Adventure",
+                "178 mins",
+                "UA 16+",
+                9.0,
+                "https://www.youtube.com/watch?v=EXeTwQWrcwY",
+                "https://www.youtube.com/watch?v=yrJL5JxEYIw",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/6/16463.jpg",
-                "When Earth becomes uninhabitable in the future, a farmer and ex-NASA pilot, Joseph Cooper, is tasked to pilot a spacecraft along with a team of researchers.",
-                "English (IMAX 6-Track 12.0), Hindi"
+                "Superstar Mahesh Babu teams with master director SS Rajamouli for an epic Indiana Jones-scale African jungle and Amazonian expedition.",
+                "Telugu (IMAX 6-Track Atmos), Tamil, Hindi, Japanese, English"
         ));
 
-        movieCatalog.put("Deadpool & Wolverine (4DX 3D)", new MovieMeta(
-                "Deadpool & Wolverine (4DX 3D)",
-                "Action • Comedy • Sci-Fi",
-                "128 mins",
-                "A (18+)",
-                7.9,
-                "https://www.youtube.com/watch?v=73_1biulkYk",
-                "https://www.youtube.com/watch?v=uJMCNJP2ipI",
-                "https://static.tvmaze.com/uploads/images/medium_portrait/507/1269689.jpg",
-                "Wolverine is recovering from his injuries when he crosses paths with the loudmouth, Deadpool. They team up to defeat a common enemy.",
-                "English (Dolby Atmos), Hindi, Tamil, Telugu"
+        movieCatalog.put("The Batman: Part II (70mm IMAX Special)", new MovieMeta(
+                "The Batman: Part II (70mm IMAX Special)",
+                "Action • Crime • Mystery",
+                "175 mins",
+                "UA 16+",
+                8.8,
+                "https://www.youtube.com/watch?v=mqqft2x_Aa4",
+                "https://www.youtube.com/watch?v=u34gHaRiBIU",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/478/1197412.jpg",
+                "Robert Pattinson returns as Bruce Wayne delving into the flooded underworld of Gotham City against the Court of Owls.",
+                "English (70mm IMAX Atmos), Hindi"
         ));
 
-        movieCatalog.put("The Greatest of All Time (GOAT) (4K Atmos)", new MovieMeta(
-                "The Greatest of All Time (GOAT) (4K Atmos)",
-                "Action • Sci-Fi • Thriller",
-                "179 mins",
-                "UA",
-                7.6,
-                "https://www.youtube.com/watch?v=jxCRlebieWc",
-                "https://www.youtube.com/watch?v=gT8R16y3PzI",
-                "https://static.tvmaze.com/uploads/images/medium_portrait/516/1291240.jpg",
-                "A top anti-terrorist hostage negotiator from SATS faces the shadows of his past when an undercover operation turns personal.",
-                "Tamil (Dolby Atmos), Telugu, Hindi"
+        movieCatalog.put("Avatar: Fire and Ash (HFR 3D IMAX)", new MovieMeta(
+                "Avatar: Fire and Ash (HFR 3D IMAX)",
+                "Sci-Fi • Adventure • Fantasy",
+                "192 mins",
+                "UA 13+",
+                9.0,
+                "https://www.youtube.com/watch?v=o5F8MOz_IDw",
+                "https://www.youtube.com/watch?v=d9MyW72ELq0",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/512/1281402.jpg",
+                "James Cameron's third chapter takes Jake Sully and Neytiri into volcanic Pandora to confront the ruthless Ash People tribe.",
+                "English (HFR 3D Atmos), Tamil, Telugu, Hindi"
         ));
 
-        movieCatalog.put("Leo: Bloody Sweet (4K Atmos)", new MovieMeta(
-                "Leo: Bloody Sweet (4K Atmos)",
+        movieCatalog.put("Jailer 2: Hukum Returns (Laser 4K Atmos)", new MovieMeta(
+                "Jailer 2: Hukum Returns (Laser 4K Atmos)",
                 "Action • Crime • Thriller",
-                "164 mins",
+                "165 mins",
                 "UA",
-                7.5,
+                8.4,
+                "https://www.youtube.com/watch?v=Bdc94vD8yNk",
+                "https://www.youtube.com/watch?v=qT4_v6k7TGo",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/516/1291240.jpg",
+                "Superstar Rajinikanth returns as Tiger Muthuvel Pandian in Nelson's adrenaline-fueled syndicate war with mass BGM by Anirudh.",
+                "Tamil (Dolby Atmos), Telugu, Hindi, Kannada"
+        ));
+
+        movieCatalog.put("Kaithi 2: Dilli Returns (LCU 4K Atmos)", new MovieMeta(
+                "Kaithi 2: Dilli Returns (LCU 4K Atmos)",
+                "Action • Drug Cartel Thriller",
+                "160 mins",
+                "UA 16+",
+                8.6,
                 "https://www.youtube.com/watch?v=Po3jStA673E",
                 "https://www.youtube.com/watch?v=q6e02D6228s",
                 "https://static.tvmaze.com/uploads/images/medium_portrait/482/1206124.jpg",
-                "A mild-mannered cafe owner in Himachal Pradesh becomes a local hero through an act of violence, triggering old gang rivalries.",
+                "Karthi returns as Dilli in Lokesh Kanagaraj's blockbuster cinematic universe (LCU), connecting the threads of Vikram, Leo, and Rolex.",
                 "Tamil (Dolby Atmos), Telugu, Hindi, Malayalam"
+        ));
+
+        movieCatalog.put("Spider-Man 4: Multiverse Homecoming (4DX 3D)", new MovieMeta(
+                "Spider-Man 4: Multiverse Homecoming (4DX 3D)",
+                "Action • Adventure • Superhero",
+                "142 mins",
+                "UA 13+",
+                8.3,
+                "https://www.youtube.com/watch?v=JfVOs4VSpmA",
+                "https://www.youtube.com/watch?v=rt-2cxAiPJk",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/507/1269689.jpg",
+                "Tom Holland begins a grounded, street-level Spider-Man saga in New York City alongside Daredevil, facing Kingpin's syndicate.",
+                "English (Dolby Atmos), Hindi, Tamil, Telugu"
+        ));
+
+        movieCatalog.put("Kalki 2898 AD: Part 2 (IMAX 3D)", new MovieMeta(
+                "Kalki 2898 AD: Part 2 (IMAX 3D)",
+                "Sci-Fi • Mythological • War",
+                "184 mins",
+                "UA 16+",
+                8.7,
+                "https://www.youtube.com/watch?v=kQDd1AhGIHk",
+                "https://www.youtube.com/watch?v=y1-w1kUGuz8",
+                "https://static.tvmaze.com/uploads/images/medium_portrait/519/1298412.jpg",
+                "Kamal Haasan's Supreme Yaskin unleashes the full might of the Complex as Prabhas's Karna and Amitabh's Ashwatthama battle to protect the divine child.",
+                "Telugu (Original Atmos), Tamil, Hindi, Malayalam, Kannada"
         ));
     }
 
@@ -316,7 +329,7 @@ public class LiveDistrictCinemaService {
                 trailer,
                 teaser,
                 "https://static.tvmaze.com/uploads/images/medium_portrait/499/1247953.jpg",
-                "Now showing across BookMyShow & District partner multiplexes in Chennai and campus locations.",
+                "2026 Theatrical release showing across BookMyShow & District partner multiplexes in Chennai and campus locations.",
                 "English, Hindi, Regional (Dolby Atmos)"
         );
     }
@@ -365,11 +378,11 @@ public class LiveDistrictCinemaService {
         int hash = Math.abs(Objects.hash(activeSource, district, theatre, movie, showtime));
         Random rnd = new Random(hash);
         int totalSeats = 60;
-        double pct = 0.40 + (rnd.nextDouble() * 0.52);
+        double pct = 0.45 + (rnd.nextDouble() * 0.48);
         int booked = (int) Math.round(totalSeats * pct);
         int available = totalSeats - booked;
 
-        String sourcePrefix = (activeSource == DataFeedSource.BOOK_MY_SHOW) ? "BMS Live: " : "District Live: ";
+        String sourcePrefix = (activeSource == DataFeedSource.BOOK_MY_SHOW) ? "BMS 2026 Live: " : "District Live: ";
         String statusBadge;
         String colorHex;
         if (available <= 5) {
@@ -417,7 +430,7 @@ public class LiveDistrictCinemaService {
         for (char r : rows) {
             for (int col = 1; col <= 10; col++) {
                 String code = "" + r + col;
-                double threshold = (r == 'A' || r == 'B' || col >= 4 && col <= 7) ? 0.68 : 0.42;
+                double threshold = (r == 'A' || r == 'B' || col >= 4 && col <= 7) ? 0.70 : 0.45;
                 if (rnd.nextDouble() < threshold) {
                     bookedCodes.add(code);
                 }

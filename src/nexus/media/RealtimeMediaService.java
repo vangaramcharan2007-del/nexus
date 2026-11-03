@@ -38,7 +38,7 @@ public class RealtimeMediaService {
                 String block = parts[i];
                 String name = extractString(block, "\"name\":\"(.*?)\"");
                 String premiered = extractString(block, "\"premiered\":\"(.*?)\"");
-                String year = premiered.length() >= 4 ? premiered.substring(0, 4) : "2024";
+                String year = premiered.length() >= 4 ? premiered.substring(0, 4) : "2026";
                 
                 // Genres
                 String genresStr = "Drama";

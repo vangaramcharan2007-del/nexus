@@ -135,11 +135,13 @@ public class Review2VerificationRunner {
             System.out.printf("   ✓ Theatres in '%s': %d multiplexes (e.g. %s)\n",
                     sampleDistrict, theatres.size(), theatres.get(0));
 
-            // Verify Official 4K Trailers and Teasers
-            String duneTrailer = liveCinema.getTrailerUrl("Dune: Part Two (IMAX 3D)");
-            String duneTeaser = liveCinema.getTeaserUrl("Dune: Part Two (IMAX 3D)");
-            System.out.printf("   ✓ Dune 2 Official 4K Trailer URL: %s\n", duneTrailer);
-            System.out.printf("   ✓ Dune 2 Official Teaser URL: %s\n", duneTeaser);
+            // Verify 2026 Official 4K Trailers and Teasers
+            String movie2026 = "Thalapathy 69: The Final Verdict (Laser 4K Atmos)";
+            String movie2026Trailer = liveCinema.getTrailerUrl(movie2026);
+            String movie2026Teaser = liveCinema.getTeaserUrl(movie2026);
+            System.out.printf("   ✓ 2026 Blockbuster: %s\n", movie2026);
+            System.out.printf("   ✓ Official 4K Trailer URL: %s\n", movie2026Trailer);
+            System.out.printf("   ✓ Official Teaser URL: %s\n", movie2026Teaser);
 
             // Test Real-time Live Occupancy Feed & Source Switching
             System.out.printf("   ✓ Active Ticketing Gateway: %s (Latency: %s | Endpoint: %s)\n",
@@ -151,21 +153,21 @@ public class Review2VerificationRunner {
             liveCinema.setActiveSource(nexus.media.LiveDistrictCinemaService.DataFeedSource.BOOK_MY_SHOW);
 
             nexus.media.LiveDistrictCinemaService.OccupancyInfo occ = liveCinema.getOccupancy(
-                    sampleDistrict, theatres.get(0), "Amaran (Major Mukund Biopic 4K)", "Today • 06:45 PM");
+                    sampleDistrict, theatres.get(0), movie2026, "Today • 06:45 PM");
             System.out.printf("   ✓ Real-time Feed: %s (%d%% Booked, %d Seats Left)\n",
                     occ.statusBadge, occ.occupancyPct, occ.availableSeats);
 
             Set<String> liveBookedSeats = liveCinema.generateBookedSeatCodes(
-                    sampleDistrict, theatres.get(0), "Amaran (Major Mukund Biopic 4K)", "Today • 06:45 PM");
+                    sampleDistrict, theatres.get(0), movie2026, "Today • 06:45 PM");
             System.out.printf("   ✓ Dynamic Seat Matrix Allocated: %d / 60 seats locked in live feed\n", liveBookedSeats.size());
 
             // Test In-App Cinema Video Player
             nexus.media.InAppCinemaPlayerDialog testPlayer = new nexus.media.InAppCinemaPlayerDialog(
-                    null, "Amaran (Major Mukund Biopic 4K)",
-                    liveCinema.getTrailerUrl("Amaran (Major Mukund Biopic 4K)"),
-                    liveCinema.getTeaserUrl("Amaran (Major Mukund Biopic 4K)"),
-                    liveCinema.getPosterUrl("Amaran (Major Mukund Biopic 4K)"),
-                    "Major Mukund Varadarajan Indian Army Biopic in 4K Dolby Atmos", 8.7, false
+                    null, movie2026,
+                    liveCinema.getTrailerUrl(movie2026),
+                    liveCinema.getTeaserUrl(movie2026),
+                    liveCinema.getPosterUrl(movie2026),
+                    "Thalapathy Vijay monumental final theatrical release in 4K Dolby Atmos", 9.1, false
             );
             System.out.println("   ✓ In-App Cinema Video Player Engine: INITIALIZED (Scrubber, Dolby Atmos EQ, Subtitles, App Mode Ready)");
             testPlayer.dispose();
@@ -173,7 +175,7 @@ public class Review2VerificationRunner {
             List<String> seats = new ArrayList<>();
             seats.add("A4");
             seats.add("A5");
-            CinemaBooking booking = new CinemaBooking("Interstellar (10th Anniv Re-Release)", "PVR Grand Galada, Chennai Airport",
+            CinemaBooking booking = new CinemaBooking(movie2026, "PVR Grand Galada, Pallavaram Airport Road",
                     sampleDistrict, "Today • 06:45 PM", seats, 700.0, 175.0, "SRMSTUDENT", 525.0, "UPI / Google Pay (VPA Scan & Pay)");
 
             System.out.printf("   ✓ Cinema Booking Generated: %s\n", booking.getId());

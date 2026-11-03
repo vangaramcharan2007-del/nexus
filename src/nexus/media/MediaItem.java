@@ -37,7 +37,7 @@ public class MediaItem {
         this.ratingScore = ratingScore;
         this.summary = summary != null ? summary : "";
         this.posterUrl = posterUrl != null ? posterUrl : "";
-        this.year = "2024";
+        this.year = "2026";
         this.trailerUrl = trailerUrl != null ? trailerUrl : "";
         this.teaserUrl = teaserUrl != null ? teaserUrl : "";
     }
