@@ -31,7 +31,7 @@ import nexus.common.NexusEvent;
 public class Review2VerificationRunner {
     public static void main(String[] args) {
         System.out.println("=============================================================");
-        System.out.println("    NEXUS V7 ENTERPRISE PLATFORM - LIVE AUDIT & VALIDATION    ");
+        System.out.println("    NEXUS V8 ENTERPRISE PLATFORM - LIVE AUDIT & VALIDATION    ");
         System.out.println("=============================================================");
 
         // Initialize DatabaseService early so all events are captured

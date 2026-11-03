@@ -21,7 +21,7 @@ public class ImmutableAuditChain {
                 0,
                 GENESIS_PREV_HASH,
                 "TX-GENESIS",
-                "NEXUS V7 Master Ledger Initialized (SRM IST Kattankulathur)",
+                "NEXUS V8 Master Ledger Initialized (SRM IST Kattankulathur)",
                 10000.00,
                 System.currentTimeMillis() - 86400000L
         );

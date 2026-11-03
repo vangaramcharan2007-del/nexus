@@ -20,7 +20,7 @@ import java.util.List;
  * SRM Institute of Science and Technology, Kattankulathur
  */
 public class EncryptedBackupVault {
-    private static final String MASTER_PASSPHRASE = "NEXUS-V7-SRM-ACID-VAULT-2026";
+    private static final String MASTER_PASSPHRASE = "NEXUS-V8-SRM-ACID-VAULT-2026";
     private static final int ITERATIONS = 65536;
     private static final int KEY_LENGTH = 256;
 

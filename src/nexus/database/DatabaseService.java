@@ -28,7 +28,7 @@ import nexus.media.MediaType;
 import nexus.media.MediaStatus;
 
 /**
- * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V7.
+ * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V8.
  * Persists Tasks, Transactions, Goals, Milestones, Media Items, Cinema Bookings, and Market Purchases.
  */
 public class DatabaseService implements NexusListener {

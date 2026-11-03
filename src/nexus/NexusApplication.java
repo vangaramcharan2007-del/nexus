@@ -47,7 +47,7 @@ public class NexusApplication extends JFrame {
     private nexus.copilot.AiAssistantDialog aiAssistantDialog;
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - Review 2 Edition");
+        setTitle("NEXUS Enterprise Platform - V8.0 Apex Edition");
         setSize(1100, 740);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -207,7 +207,7 @@ public class NexusApplication extends JFrame {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         leftPanel.setOpaque(false);
 
-        JLabel brand = new JLabel("⚡ NEXUS 7.0");
+        JLabel brand = new JLabel("⚡ NEXUS 8.0");
         brand.setFont(new Font("Consolas", Font.BOLD, 15));
         brand.setForeground(new Color(0, 255, 255));
 

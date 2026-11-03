@@ -85,7 +85,7 @@ public class NexusAiClient {
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Content-Type", "application/json")
                     .header("HTTP-Referer", "https://srmist.edu.in/nexus")
-                    .header("X-Title", "NEXUS-V7-SRM")
+                    .header("X-Title", "NEXUS-V8-SRM")
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .timeout(Duration.ofSeconds(TIMEOUT_SECONDS))
                     .build();

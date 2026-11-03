@@ -76,7 +76,7 @@ public class LoginPanel extends JPanel {
         leftPanel.add(titleLabel, gbcLeft);
         
         gbcLeft.gridy = 1;
-        JLabel subtitleLabel = new JLabel("ENTERPRISE PLATFORM v7.0");
+        JLabel subtitleLabel = new JLabel("ENTERPRISE PLATFORM v8.0");
         subtitleLabel.setFont(new Font("Consolas", Font.PLAIN, 18));
         subtitleLabel.setForeground(new Color(0, 200, 255));
         leftPanel.add(subtitleLabel, gbcLeft);
