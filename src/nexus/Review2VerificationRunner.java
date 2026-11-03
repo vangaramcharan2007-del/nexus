@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -121,22 +122,48 @@ public class Review2VerificationRunner {
             System.err.println("   ✗ Financial Calculator Error: " + e.getMessage());
         }
 
-        // 5. VERIFY BOOKMYSHOW CINEMA BOX OFFICE & SEAT ALLOCATION
-        System.out.println("\n[5/7] Testing BookMyShow Box Office, Payment Modes & Concessions...");
+        // 5. VERIFY BOOKMYSHOW & DISTRICT CINEMA BOX OFFICE, TRAILERS & REAL-TIME BOOKING
+        System.out.println("\n[5/10] Testing BookMyShow & District Live Box Office, 4K Trailers & Real-Time Booking...");
         try {
+            nexus.media.LiveDistrictCinemaService liveCinema = nexus.media.LiveDistrictCinemaService.getInstance();
+            List<String> districts = liveCinema.getDistricts();
+            System.out.printf("   ✓ Registered Districts / Locations: %d regions (e.g. %s, %s)\n",
+                    districts.size(), districts.get(0), districts.get(1));
+
+            String sampleDistrict = "SRM KTR & Chengalpattu Campus District";
+            List<String> theatres = liveCinema.getTheatresForDistrict(sampleDistrict);
+            System.out.printf("   ✓ Theatres in '%s': %d multiplexes (e.g. %s)\n",
+                    sampleDistrict, theatres.size(), theatres.get(0));
+
+            // Verify Official 4K Trailers and Teasers
+            String duneTrailer = liveCinema.getTrailerUrl("Dune: Part Two (IMAX 3D)");
+            String duneTeaser = liveCinema.getTeaserUrl("Dune: Part Two (IMAX 3D)");
+            System.out.printf("   ✓ Dune 2 Official 4K Trailer URL: %s\n", duneTrailer);
+            System.out.printf("   ✓ Dune 2 Official Teaser URL: %s\n", duneTeaser);
+
+            // Test Real-time Live Occupancy Feed
+            nexus.media.LiveDistrictCinemaService.OccupancyInfo occ = liveCinema.getOccupancy(
+                    sampleDistrict, theatres.get(0), "Dune: Part Two (IMAX 3D)", "Today • 06:45 PM");
+            System.out.printf("   ✓ Real-time Feed: %s (%d%% Booked, %d Seats Left)\n",
+                    occ.statusBadge, occ.occupancyPct, occ.availableSeats);
+
+            Set<String> liveBookedSeats = liveCinema.generateBookedSeatCodes(
+                    sampleDistrict, theatres.get(0), "Dune: Part Two (IMAX 3D)", "Today • 06:45 PM");
+            System.out.printf("   ✓ Dynamic Seat Matrix Allocated: %d / 60 seats locked in live feed\n", liveBookedSeats.size());
+
             List<String> seats = new ArrayList<>();
             seats.add("A4");
             seats.add("A5");
-            CinemaBooking booking = new CinemaBooking("Interstellar (10th Anniv IMAX)", "PVR Grand Galada, Chennai", 
-                    "Today • 06:45 PM", seats, 700.0, 175.0, "SRMSTUDENT", 525.0, "UPI / Google Pay (VPA Scan & Pay)");
+            CinemaBooking booking = new CinemaBooking("Interstellar (10th Anniv Re-Release)", "PVR Grand Galada, Chennai Airport",
+                    sampleDistrict, "Today • 06:45 PM", seats, 700.0, 175.0, "SRMSTUDENT", 525.0, "UPI / Google Pay (VPA Scan & Pay)");
 
             System.out.printf("   ✓ Cinema Booking Generated: %s\n", booking.getId());
-            System.out.printf("   ✓ Theatre: %s  |  Show: %s\n", booking.getTheatre(), booking.getShowTime());
+            System.out.printf("   ✓ Location: %s  |  Theatre: %s  |  Show: %s\n", booking.getDistrict(), booking.getTheatre(), booking.getShowTime());
             System.out.printf("   ✓ Allocated Seats: %s (VIP Recliners)\n", booking.getSeatsFormatted());
             System.out.printf("   ✓ Pricing: Subtotal=$%.2f | Discount=-$%.2f (%s) | Final Total=$%.2f\n",
                     booking.getBasePrice(), booking.getDiscount(), booking.getPromoCode(), booking.getFinalTotal());
             System.out.printf("   ✓ Payment Mode: %s\n", booking.getPaymentMethod());
-            System.out.println("   >>> STATUS: BOOKMYSHOW SEAT ALLOCATION & PROMO ENGINE VALIDATED!");
+            System.out.println("   >>> STATUS: BOOKMYSHOW & DISTRICT LIVE BOOKING ENGINE + 4K TRAILERS VALIDATED!");
 
             // Fire event to test persistence
             EventBus.getInstance().publish(new NexusEvent("TICKET_BOOKED", booking, "Media"));

@@ -8,6 +8,7 @@ public class CinemaBooking {
     private String id;
     private String movieTitle;
     private String theatre;
+    private String district;
     private String showTime;
     private List<String> seatNumbers;
     private double basePrice;
@@ -20,14 +21,20 @@ public class CinemaBooking {
 
     public CinemaBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal) {
-        this(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
+        this(movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
     }
 
     public CinemaBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
+        this(movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, paymentMethod);
+    }
+
+    public CinemaBooking(String movieTitle, String theatre, String district, String showTime, List<String> seatNumbers,
+                         double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
         this.id = "BMS-" + IdGenerator.generateId().substring(0, 8).toUpperCase();
         this.movieTitle = movieTitle;
         this.theatre = theatre;
+        this.district = district != null && !district.trim().isEmpty() ? district : "SRM KTR & Chengalpattu Campus District";
         this.showTime = showTime;
         this.seatNumbers = seatNumbers;
         this.basePrice = basePrice;
@@ -41,14 +48,20 @@ public class CinemaBooking {
 
     public CinemaBooking(String id, String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal, Date bookingDate, String status) {
-        this(id, movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, bookingDate, status, "NEXUS Capital Wallet");
+        this(id, movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, bookingDate, status, "NEXUS Capital Wallet");
     }
 
     public CinemaBooking(String id, String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                          double basePrice, double discount, String promoCode, double finalTotal, Date bookingDate, String status, String paymentMethod) {
+        this(id, movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, bookingDate, status, paymentMethod);
+    }
+
+    public CinemaBooking(String id, String movieTitle, String theatre, String district, String showTime, List<String> seatNumbers,
+                         double basePrice, double discount, String promoCode, double finalTotal, Date bookingDate, String status, String paymentMethod) {
         this.id = id;
         this.movieTitle = movieTitle;
         this.theatre = theatre;
+        this.district = district != null && !district.trim().isEmpty() ? district : "SRM KTR & Chengalpattu Campus District";
         this.showTime = showTime;
         this.seatNumbers = seatNumbers;
         this.basePrice = basePrice;
@@ -63,6 +76,8 @@ public class CinemaBooking {
     public String getId() { return id; }
     public String getMovieTitle() { return movieTitle; }
     public String getTheatre() { return theatre; }
+    public String getDistrict() { return district; }
+    public void setDistrict(String district) { this.district = district; }
     public String getShowTime() { return showTime; }
     public List<String> getSeatNumbers() { return seatNumbers; }
     public String getSeatsFormatted() { return String.join(", ", seatNumbers); }
@@ -77,7 +92,7 @@ public class CinemaBooking {
 
     @Override
     public String toString() {
-        return String.format("[%s] %s @ %s (%s) - Seats: %s | Paid via: %s | Total: $%.2f",
-                id, movieTitle, theatre, showTime, getSeatsFormatted(), paymentMethod, finalTotal);
+        return String.format("[%s] %s @ %s [%s] (%s) - Seats: %s | Paid via: %s | Total: $%.2f",
+                id, movieTitle, theatre, district, showTime, getSeatsFormatted(), paymentMethod, finalTotal);
     }
 }

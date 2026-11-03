@@ -116,12 +116,17 @@ public class MediaService implements NexusListener {
 
     public CinemaBooking createBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                                        double basePrice, double discount, String promoCode, double finalTotal) {
-        return createBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
+        return createBooking(movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, "NEXUS Capital Wallet");
     }
 
     public CinemaBooking createBooking(String movieTitle, String theatre, String showTime, List<String> seatNumbers,
                                        double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
-        CinemaBooking booking = new CinemaBooking(movieTitle, theatre, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, paymentMethod);
+        return createBooking(movieTitle, theatre, "SRM KTR & Chengalpattu Campus District", showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, paymentMethod);
+    }
+
+    public CinemaBooking createBooking(String movieTitle, String theatre, String district, String showTime, List<String> seatNumbers,
+                                       double basePrice, double discount, String promoCode, double finalTotal, String paymentMethod) {
+        CinemaBooking booking = new CinemaBooking(movieTitle, theatre, district, showTime, seatNumbers, basePrice, discount, promoCode, finalTotal, paymentMethod);
         bookings.add(0, booking);
 
         // Notify EventBus
