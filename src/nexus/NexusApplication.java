@@ -44,10 +44,9 @@ import nexus.auth.LoginPanel;
  * 6. Strategic Goals with deadline tracking, milestones, and progress bars.
  */
 public class NexusApplication extends JFrame {
-    private nexus.copilot.AiAssistantDialog aiAssistantDialog;
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - V9.0 Architecture Edition");
+        setTitle("NEXUS Enterprise Platform - V10.0 Core Edition");
         setSize(1100, 740);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -159,35 +158,11 @@ public class NexusApplication extends JFrame {
         nexus.common.EventBus.getInstance().subscribeToAll(new nexus.common.NexusListener() {
             @Override
             public void onEvent(nexus.common.NexusEvent event) {
-                if ("OPEN_AI_ASSISTANT".equals(event.getType())) {
-                    SwingUtilities.invokeLater(() -> {
-                        if (aiAssistantDialog == null) {
-                            aiAssistantDialog = new nexus.copilot.AiAssistantDialog(NexusApplication.this);
-                        }
-                        aiAssistantDialog.setVisible(true);
-                    });
-                } else if ("NAVIGATION_REQUEST".equals(event.getType())) {
-                    String targetTab = (String) event.getPayload();
-                    if (targetTab.contains("Cloud") || targetTab.contains("P8")) {
-                        showExaminerAuditDialog(0);
-                    } else if (targetTab.contains("Mobile") || targetTab.contains("P9")) {
-                        showExaminerAuditDialog(1);
-                    } else if (targetTab.contains("Copilot") || targetTab.contains("Quantitative") || targetTab.contains("P10")) {
-                        showExaminerAuditDialog(2);
-                    } else if (targetTab.contains("Web3") || targetTab.contains("P12")) {
-                        showExaminerAuditDialog(3);
-                    } else if (targetTab.contains("P13") || targetTab.contains("Resilience") || targetTab.contains("Breaker")) {
-                        showExaminerAuditDialog(4);
-                    } else if (targetTab.contains("P14") || targetTab.contains("Vault") || targetTab.contains("AuditChain")) {
-                        showExaminerAuditDialog(5);
-                    } else if (targetTab.contains("P16") || targetTab.contains("Tenant") || targetTab.contains("Sharding")) {
-                        showExaminerAuditDialog(6);
-                    } else {
-                        for (int i = 0; i < tabbedPane.getTabCount(); i++) {
-                            if (tabbedPane.getTitleAt(i).toLowerCase().contains(targetTab.toLowerCase())) {
-                                tabbedPane.setSelectedIndex(i);
-                                break;
-                            }
+                if ("NAVIGATION_REQUEST".equals(event.getType()) && event.getPayload() instanceof String targetTab) {
+                    for (int i = 0; i < tabbedPane.getTabCount(); i++) {
+                        if (tabbedPane.getTitleAt(i).toLowerCase().contains(targetTab.toLowerCase())) {
+                            tabbedPane.setSelectedIndex(i);
+                            break;
                         }
                     }
                 }
@@ -207,7 +182,7 @@ public class NexusApplication extends JFrame {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         leftPanel.setOpaque(false);
 
-        JLabel brand = new JLabel("⚡ NEXUS 9.0");
+        JLabel brand = new JLabel("⚡ NEXUS 10.0");
         brand.setFont(new Font("Consolas", Font.BOLD, 15));
         brand.setForeground(new Color(0, 255, 255));
 
@@ -241,11 +216,18 @@ public class NexusApplication extends JFrame {
         leftPanel.add(userRole);
         leftPanel.add(tierChip);
 
-        // Right Quick Profile Switcher Dropdown
+        // Right Quick Profile Switcher Dropdown (Clean, non-overwhelming core controls)
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setOpaque(false);
 
-        JLabel switchLabel = new JLabel("Switch Account:");
+        JLabel coreBadge = new JLabel(" CORE EDITION ");
+        coreBadge.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        coreBadge.setOpaque(true);
+        coreBadge.setBackground(new Color(16, 185, 129, 40));
+        coreBadge.setForeground(new Color(52, 211, 153));
+        coreBadge.setBorder(BorderFactory.createLineBorder(new Color(16, 185, 129), 1));
+
+        JLabel switchLabel = new JLabel("Active Profile:");
         switchLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
         switchLabel.setForeground(new Color(148, 163, 184));
 
@@ -282,86 +264,13 @@ public class NexusApplication extends JFrame {
             }
         });
 
-        JButton aiBtn = new JButton("⚡ Smart Campus Advisor");
-        aiBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        aiBtn.setBackground(new Color(16, 185, 129));
-        aiBtn.setForeground(Color.WHITE);
-        aiBtn.setFocusPainted(false);
-        aiBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        aiBtn.addActionListener(e -> {
-            if (aiAssistantDialog == null) {
-                aiAssistantDialog = new nexus.copilot.AiAssistantDialog(this);
-            }
-            aiAssistantDialog.setVisible(true);
-        });
-
-        JButton auditBtn = new JButton("🎓 Examiner Review & Architecture ⚙️");
-        auditBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        auditBtn.setBackground(new Color(245, 158, 11)); // Amber/Gold accent
-        auditBtn.setForeground(Color.BLACK);
-        auditBtn.setFocusPainted(false);
-        auditBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        auditBtn.addActionListener(e -> showExaminerAuditDialog(0));
-
-        rightPanel.add(aiBtn);
-        rightPanel.add(Box.createHorizontalStrut(8));
-        rightPanel.add(auditBtn);
-        rightPanel.add(Box.createHorizontalStrut(8));
+        rightPanel.add(coreBadge);
+        rightPanel.add(Box.createHorizontalStrut(10));
         rightPanel.add(switchLabel);
         rightPanel.add(profileCombo);
 
         bar.add(leftPanel, BorderLayout.WEST);
         bar.add(rightPanel, BorderLayout.EAST);
         return bar;
-    }
-
-    private void showExaminerAuditDialog(int initialSubtab) {
-        JDialog dlg = new JDialog(this, "NEXUS Enterprise Architecture & Review 2 Audit Console", true);
-        dlg.setSize(1080, 680);
-        dlg.setLocationRelativeTo(this);
-
-        JTabbedPane auditTabs = new JTabbedPane();
-        auditTabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        auditTabs.addTab("⚡ Cloud Microservices & Kafka Mesh (Phase 8)", new nexus.cloud.CloudMeshPanel());
-        auditTabs.addTab("📱 Mobile 15s Dynamic QR Engine (Phase 9)", new nexus.mobile.MobilePassPanel());
-        auditTabs.addTab("📈 Autonomous Quantitative Engine & LSTM (Phase 10)", new nexus.copilot.AiCopilotPanel());
-        auditTabs.addTab("🌐 Web3 zk-SNARK & Grade Signer (Phase 12)", new nexus.web3.Web3ProtocolPanel());
-        auditTabs.addTab("🛡️ Circuit Breakers & In-Memory Cache (Phase 13)", new nexus.resilience.ResiliencePanel());
-        auditTabs.addTab("🔒 Encrypted Vault & Hash Chain (Phase 14)", new nexus.vault.VaultAuditPanel());
-        auditTabs.addTab("🏛️ Multi-Tenant Sharding & RBAC 2.0 (Phase 16)", new nexus.tenant.TenantPanel());
-
-        if (initialSubtab >= 0 && initialSubtab < auditTabs.getTabCount()) {
-            auditTabs.setSelectedIndex(initialSubtab);
-        }
-
-        JPanel wrapper = new JPanel(new BorderLayout(0, 8));
-        wrapper.setBackground(new Color(15, 23, 42));
-        wrapper.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setOpaque(false);
-        JLabel title = new JLabel("🎓 REVIEW 2 ENTERPRISE ARCHITECTURE & AUDIT CONSOLE");
-        title.setFont(new Font("Consolas", Font.BOLD, 15));
-        title.setForeground(new Color(251, 191, 36)); // Gold
-        JLabel subtitle = new JLabel("Designed for Faculty Evaluation & Systems Audit • Student: Ram Charan Vanga");
-        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        subtitle.setForeground(new Color(148, 163, 184));
-        topBar.add(title, BorderLayout.NORTH);
-        topBar.add(subtitle, BorderLayout.SOUTH);
-
-        wrapper.add(topBar, BorderLayout.NORTH);
-        wrapper.add(auditTabs, BorderLayout.CENTER);
-
-        JButton closeBtn = new JButton("Close Audit Console");
-        closeBtn.setBackground(new Color(51, 65, 85));
-        closeBtn.setForeground(Color.WHITE);
-        closeBtn.addActionListener(e -> dlg.dispose());
-        JPanel btm = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btm.setOpaque(false);
-        btm.add(closeBtn);
-        wrapper.add(btm, BorderLayout.SOUTH);
-
-        dlg.setContentPane(wrapper);
-        dlg.setVisible(true);
     }
 }
