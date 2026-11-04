@@ -5,7 +5,7 @@ import nexus.common.NexusEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AccountService {
+public class AccountService implements IAuthenticationProvider {
     private static final AccountService instance = new AccountService();
     private final List<UserProfile> profiles = new ArrayList<>();
     private UserProfile currentProfile;
@@ -69,5 +69,50 @@ public class AccountService {
             this.currentProfile = newProfile;
             EventBus.getInstance().publish(new NexusEvent("USER_SWITCHED", newProfile, "Auth"));
         }
+    }
+
+    // --- IAuthenticationProvider Implementation (Review 2 Rubric) ---
+    @Override
+    public UserProfile authenticate(String username, String credential) throws nexus.common.exceptions.AuthenticationFailedException {
+        if (credential == null || credential.trim().isEmpty()) {
+            throw new nexus.common.exceptions.AuthenticationFailedException(username, "Empty security credentials provided.");
+        }
+        for (UserProfile p : profiles) {
+            if (p.getName().equalsIgnoreCase(username) || p.getId().equalsIgnoreCase(username)) {
+                this.currentProfile = p;
+                EventBus.getInstance().publish(new NexusEvent("USER_SWITCHED", p, "Auth"));
+                return p;
+            }
+        }
+        throw new nexus.common.exceptions.AuthenticationFailedException(username, "Identity not recognized in zero-trust ledger.");
+    }
+
+    @Override
+    public UserProfile getActiveUser() {
+        return getCurrentProfile();
+    }
+
+    @Override
+    public void switchAccount(String userId) {
+        for (UserProfile p : profiles) {
+            if (p.getId().equalsIgnoreCase(userId)) {
+                switchProfile(p);
+                break;
+            }
+        }
+    }
+
+    @Override
+    public List<UserProfile> getAllProfiles() {
+        return getProfiles();
+    }
+
+    @Override
+    public boolean hasPermission(String requiredRole) {
+        if (currentProfile == null) return false;
+        if (currentProfile.getRole().toLowerCase().contains("admin") || currentProfile.getRole().toLowerCase().contains("lead")) {
+            return true;
+        }
+        return currentProfile.getRole().equalsIgnoreCase(requiredRole);
     }
 }

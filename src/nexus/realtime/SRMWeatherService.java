@@ -32,7 +32,7 @@ public class SRMWeatherService {
         try {
             String json = Jsoup.connect(API_URL)
                     .ignoreContentType(true)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) NEXUS/8.0")
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) NEXUS/9.0")
                     .timeout(5000)
                     .get()
                     .body()

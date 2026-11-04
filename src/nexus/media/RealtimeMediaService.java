@@ -24,7 +24,7 @@ public class RealtimeMediaService {
             String encodedQuery = URLEncoder.encode(query.trim(), StandardCharsets.UTF_8.name());
             String json = Jsoup.connect(SEARCH_URL + encodedQuery)
                     .ignoreContentType(true)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) NEXUS/8.0")
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) NEXUS/9.0")
                     .timeout(6000)
                     .get()
                     .body()

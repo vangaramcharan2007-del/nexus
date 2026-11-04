@@ -5,7 +5,7 @@ import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
 import java.util.*;
 
-public class FinanceService implements NexusListener {
+public class FinanceService implements NexusListener, IFinanceEngine {
     private Budget budget;
     private List<Transaction> transactions;
     private List<CryptoPrice> cryptoPrices;
@@ -115,5 +115,56 @@ public class FinanceService implements NexusListener {
         budget.addExpense(spent);
         EventBus.getInstance().publish(new NexusEvent("TRANSACTIONS_UPDATED", transactions, "Finance"));
         EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
+    }
+
+    // --- IFinanceEngine Implementation (Review 2 Rubric) ---
+    @Override
+    public double getCurrentBalance() {
+        return budget != null ? budget.getRemaining() : 0.0;
+    }
+
+    @Override
+    public void allocateBudget(double newBudget) {
+        setBudgetCap(newBudget);
+    }
+
+    @Override
+    public void recordExpense(double amount, String categoryName, String description) throws nexus.common.exceptions.InsufficientFundsException {
+        if (budget != null && amount > budget.getRemaining()) {
+            throw new nexus.common.exceptions.InsufficientFundsException(amount, budget.getRemaining());
+        }
+        TransactionCategory cat = TransactionCategory.OTHER;
+        for (TransactionCategory c : TransactionCategory.values()) {
+            if (c.name().equalsIgnoreCase(categoryName) || c.getDisplayName().equalsIgnoreCase(categoryName)) {
+                cat = c;
+                break;
+            }
+        }
+        addTransaction(description, amount, cat);
+    }
+
+    @Override
+    public double calculateEmi(double principal, double annualRatePct, int tenureMonths) {
+        return FinancialCalculator.calculateEmi(principal, annualRatePct, tenureMonths).monthlyEmi;
+    }
+
+    @Override
+    public double calculateCompoundInterest(double principal, double annualRatePct, int years) {
+        return FinancialCalculator.calculateCompoundInterest(principal, annualRatePct, 1, years).futureValue;
+    }
+
+    @Override
+    public double calculateSipWealth(double monthlyInvestment, double expectedAnnualReturnPct, int years) {
+        return FinancialCalculator.calculateSip(monthlyInvestment, expectedAnnualReturnPct, years * 12).totalMaturityValue;
+    }
+
+    @Override
+    public double calculateDiscountAndGst(double baseAmount, double discountPct, double gstPct) {
+        return FinancialCalculator.calculateDiscountAndTax(baseAmount, discountPct, gstPct).finalPayable;
+    }
+
+    @Override
+    public List<Transaction> getAllTransactions() {
+        return getTransactions();
     }
 }

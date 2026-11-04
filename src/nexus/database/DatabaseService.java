@@ -218,6 +218,20 @@ public class DatabaseService implements NexusListener {
         return transactions;
     }
 
+    // Direct helper methods for IRepository pattern
+    public void persistTask(Task t) {
+        onEvent(new NexusEvent("TASK_ADDED", t, "Database"));
+    }
+
+    public void deleteTask(String id) {
+        Task dummy = new Task(id, "", TaskPriority.LOW, false);
+        onEvent(new NexusEvent("TASK_DELETED", dummy, "Database"));
+    }
+
+    public void persistTransaction(Transaction t) {
+        onEvent(new NexusEvent("TRANSACTION_ADDED", t, "Database"));
+    }
+
     public List<Goal> loadGoals() {
         List<Goal> goals = new ArrayList<>();
         String sql = "SELECT id, title, deadline, category FROM goals";

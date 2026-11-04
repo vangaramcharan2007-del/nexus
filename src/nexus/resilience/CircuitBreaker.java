@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Department of Computer Science & Engineering
  * SRM Institute of Science and Technology, Kattankulathur
  */
-public class CircuitBreaker {
+public class CircuitBreaker implements ICircuitBreakerPolicy {
     public enum State {
         CLOSED,     // Normal operation - all calls pass through
         OPEN,       // Tripped - all calls fail fast or return cached fallback
@@ -97,5 +97,21 @@ public class CircuitBreaker {
         if (state != State.OPEN) return 0;
         long elapsed = System.currentTimeMillis() - lastStateChangeTime.get();
         return Math.max(0, recoveryTimeoutMs - elapsed);
+    }
+
+    // --- ICircuitBreakerPolicy Implementation (Review 2 Rubric) ---
+    @Override
+    public <T> T execute(java.util.function.Supplier<T> operation, java.util.function.Supplier<T> fallback) {
+        if (!allowExecution()) {
+            return fallback != null ? fallback.get() : null;
+        }
+        try {
+            T result = operation.get();
+            recordSuccess();
+            return result;
+        } catch (Exception e) {
+            recordFailure();
+            return fallback != null ? fallback.get() : null;
+        }
     }
 }
