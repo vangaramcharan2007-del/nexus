@@ -4,16 +4,18 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import nexus.realtime.BookMyShowScraper;
 
 /**
  * NEXUS In-App Cinema Video Player.
- * Provides rich in-app trailer & teaser playback without kicking the user out to a regular browser:
+ * Provides interactive in-app playback and direct 4K video stream playback:
  * 1) Built-in interactive Swing Cinema Player with animated visualizer, scrubbing bar, volume,
  *    synced subtitles, resolution switch, and audio modes.
- * 2) Standalone In-App Web Screen mode using Edge App Container (--app embed) with ZERO browser chrome
- *    (no address bar, no tabs, standalone native window appearance).
+ * 2) Standalone In-App Web Screen mode using Edge App Container (--app watch) with ZERO browser chrome
+ *    (no address bar, no tabs, standalone native video player appearance) and YouTube embed bypass.
  */
 public class InAppCinemaPlayerDialog extends JDialog {
 
@@ -27,7 +29,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
     private boolean isPlaying = true;
     private boolean isTeaserMode = false;
     private int currentTimeSec = 0;
-    private int totalDurationSec = 166; // e.g. 2:46
+    private int totalDurationSec = 166;
     private javax.swing.Timer playbackTimer;
 
     private JLabel timeLabel;
@@ -44,15 +46,15 @@ public class InAppCinemaPlayerDialog extends JDialog {
                                    String posterUrl, String synopsis, double ratingScore, boolean startAsTeaser) {
         super(parent, "NEXUS In-App Cinema Player • " + movieTitle, true);
         this.movieTitle = movieTitle;
-        this.trailerUrl = trailerUrl;
-        this.teaserUrl = teaserUrl;
+        this.trailerUrl = (trailerUrl != null && !trailerUrl.isEmpty()) ? trailerUrl : BookMyShowScraper.resolveWorkingYouTubeTrailer(movieTitle, false);
+        this.teaserUrl = (teaserUrl != null && !teaserUrl.isEmpty()) ? teaserUrl : BookMyShowScraper.resolveWorkingYouTubeTrailer(movieTitle, true);
         this.posterUrl = posterUrl;
         this.synopsis = synopsis;
         this.ratingScore = ratingScore;
         this.isTeaserMode = startAsTeaser;
         this.totalDurationSec = startAsTeaser ? 75 : 166;
 
-        setSize(960, 640);
+        setSize(980, 660);
         setLocationRelativeTo(parent);
         getContentPane().setBackground(new Color(11, 15, 25)); // Deep Cinema Black
         setLayout(new BorderLayout());
@@ -97,15 +99,24 @@ public class InAppCinemaPlayerDialog extends JDialog {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.setOpaque(false);
 
-        JButton standaloneAppBtn = new JButton("🎥 Standalone Cinema Screen");
-        standaloneAppBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        standaloneAppBtn.setBackground(new Color(225, 29, 72)); // YouTube Red
-        standaloneAppBtn.setForeground(Color.WHITE);
-        standaloneAppBtn.setFocusPainted(false);
-        standaloneAppBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        standaloneAppBtn.setToolTipText("Open pure standalone embedded video player without browser address bars");
-        standaloneAppBtn.addActionListener(e -> launchStandaloneAppWindow());
-        right.add(standaloneAppBtn);
+        JButton launchDirectBtn = new JButton("▶ Launch Standalone 4K Video");
+        launchDirectBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        launchDirectBtn.setBackground(new Color(225, 29, 72)); // YouTube Red
+        launchDirectBtn.setForeground(Color.WHITE);
+        launchDirectBtn.setFocusPainted(false);
+        launchDirectBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        launchDirectBtn.setToolTipText("Open pure standalone 4K video player window without browser address bars");
+        launchDirectBtn.addActionListener(e -> launchStandaloneAppWindow());
+        right.add(launchDirectBtn);
+
+        JButton browserBtn = new JButton("🌐 Browser");
+        browserBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        browserBtn.setBackground(new Color(30, 41, 59));
+        browserBtn.setForeground(Color.WHITE);
+        browserBtn.setFocusPainted(false);
+        browserBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        browserBtn.addActionListener(e -> openInDefaultBrowser());
+        right.add(browserBtn);
 
         JButton closeBtn = new JButton("✕ Close");
         closeBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
@@ -143,20 +154,20 @@ public class InAppCinemaPlayerDialog extends JDialog {
                 g2.fillRect(0, 0, w, h);
 
                 // Subtle projector light beam effect
-                g2.setColor(new Color(56, 189, 248, 15));
+                g2.setColor(new Color(56, 189, 248, 18));
                 Polygon beam = new Polygon(
-                        new int[]{w / 2 - 80, w / 2 + 80, w, 0},
+                        new int[]{w / 2 - 100, w / 2 + 100, w, 0},
                         new int[]{0, 0, h, h},
                         4
                 );
                 g2.fill(beam);
 
                 // Center Movie Title & Cinematic Branding
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 26));
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 24));
                 FontMetrics fm = g2.getFontMetrics();
                 String displayTitle = movieTitle.toUpperCase();
                 int tx = (w - fm.stringWidth(displayTitle)) / 2;
-                int ty = h / 2 - 40;
+                int ty = h / 2 - 50;
                 g2.setColor(new Color(0, 0, 0, 180));
                 g2.drawString(displayTitle, tx + 2, ty + 2);
                 g2.setColor(Color.WHITE);
@@ -164,10 +175,10 @@ public class InAppCinemaPlayerDialog extends JDialog {
 
                 // Subtitle/Mode Pill
                 g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                String modePill = isTeaserMode ? "🔥 OFFICIAL SNEAK-PEEK TEASER • 4K HDR10+" : "🎬 OFFICIAL MAIN THEATRICAL TRAILER • IMAX 70mm";
+                String modePill = isTeaserMode ? "⚡ OFFICIAL SNEAK-PEEK TEASER • 4K HDR10+" : "🎬 OFFICIAL MAIN THEATRICAL TRAILER • IMAX 70mm";
                 FontMetrics pfm = g2.getFontMetrics();
                 int px = (w - pfm.stringWidth(modePill)) / 2;
-                int py = ty + 30;
+                int py = ty + 28;
                 g2.setColor(isTeaserMode ? new Color(245, 158, 11) : new Color(56, 189, 248));
                 g2.drawString(modePill, px, py);
 
@@ -177,7 +188,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
                     int barCount = 36;
                     int barWidth = 6;
                     int startX = (w - (barCount * 10)) / 2;
-                    int baseY = h / 2 + 60;
+                    int baseY = h / 2 + 55;
                     for (int i = 0; i < barCount; i++) {
                         int barH = (int) (Math.sin((currentTimeSec * 2.5) + (i * 0.45)) * 18 + 22);
                         g2.fillRect(startX + (i * 10), baseY - barH / 2, barWidth, barH);
@@ -187,7 +198,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
                     g2.setFont(new Font("Segoe UI", Font.BOLD, 16));
                     String pausedStr = "⏸ PAUSED";
                     int pw = g2.getFontMetrics().stringWidth(pausedStr);
-                    g2.drawString(pausedStr, (w - pw) / 2, h / 2 + 60);
+                    g2.drawString(pausedStr, (w - pw) / 2, h / 2 + 55);
                 }
 
                 // Watermark Specs Badge
@@ -201,10 +212,40 @@ public class InAppCinemaPlayerDialog extends JDialog {
 
         videoScreenCanvas.setLayout(new BorderLayout());
 
+        // Center Action Bar over the canvas
+        JPanel centerLaunchPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
+        centerLaunchPanel.setOpaque(false);
+        centerLaunchPanel.setBorder(BorderFactory.createEmptyBorder(120, 0, 0, 0));
+
+        JButton playCenterBtn = new JButton("▶ Play Real 4K Video (YouTube Standalone)");
+        playCenterBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        playCenterBtn.setBackground(new Color(225, 29, 72));
+        playCenterBtn.setForeground(Color.WHITE);
+        playCenterBtn.setFocusPainted(false);
+        playCenterBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        playCenterBtn.setPreferredSize(new Dimension(320, 42));
+        playCenterBtn.addActionListener(e -> launchStandaloneAppWindow());
+        centerLaunchPanel.add(playCenterBtn);
+
+        JButton playTeaserCenterBtn = new JButton("⚡ Play Teaser");
+        playTeaserCenterBtn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        playTeaserCenterBtn.setBackground(new Color(217, 119, 6));
+        playTeaserCenterBtn.setForeground(Color.WHITE);
+        playTeaserCenterBtn.setFocusPainted(false);
+        playTeaserCenterBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        playTeaserCenterBtn.setPreferredSize(new Dimension(140, 42));
+        playTeaserCenterBtn.addActionListener(e -> {
+            isTeaserMode = true;
+            launchStandaloneAppWindow();
+        });
+        centerLaunchPanel.add(playTeaserCenterBtn);
+
+        videoScreenCanvas.add(centerLaunchPanel, BorderLayout.CENTER);
+
         // Subtitles Overlay at bottom of screen
         subtitleLabel = new JLabel(" ", SwingConstants.CENTER);
-        subtitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        subtitleLabel.setForeground(new Color(254, 240, 138)); // Light Warm Gold
+        subtitleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        subtitleLabel.setForeground(new Color(254, 240, 138));
         subtitleLabel.setOpaque(true);
         subtitleLabel.setBackground(new Color(0, 0, 0, 160));
         subtitleLabel.setBorder(BorderFactory.createEmptyBorder(6, 16, 6, 16));
@@ -248,7 +289,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
         JPanel controlsRow = new JPanel(new BorderLayout());
         controlsRow.setOpaque(false);
 
-        // Left Controls (Play, Rewind, Forward, Mode Toggle)
+        // Left Controls
         JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         leftBtns.setOpaque(false);
 
@@ -260,7 +301,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
         playPauseBtn.addActionListener(e -> togglePlayPause());
         leftBtns.add(playPauseBtn);
 
-        JButton rewindBtn = new JButton("⏪ -10s");
+        JButton rewindBtn = new JButton("⏮ -10s");
         rewindBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         rewindBtn.setBackground(new Color(30, 41, 59));
         rewindBtn.setForeground(Color.WHITE);
@@ -268,7 +309,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
         rewindBtn.addActionListener(e -> seekOffset(-10));
         leftBtns.add(rewindBtn);
 
-        JButton forwardBtn = new JButton("⏩ +10s");
+        JButton forwardBtn = new JButton("⏭ +10s");
         forwardBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         forwardBtn.setBackground(new Color(30, 41, 59));
         forwardBtn.setForeground(Color.WHITE);
@@ -276,22 +317,8 @@ public class InAppCinemaPlayerDialog extends JDialog {
         forwardBtn.addActionListener(e -> seekOffset(10));
         leftBtns.add(forwardBtn);
 
-        JButton replayBtn = new JButton("↺ Replay");
-        replayBtn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        replayBtn.setBackground(new Color(30, 41, 59));
-        replayBtn.setForeground(Color.WHITE);
-        replayBtn.setFocusPainted(false);
-        replayBtn.addActionListener(e -> {
-            currentTimeSec = 0;
-            isPlaying = true;
-            playPauseBtn.setText("⏸ Pause");
-            updateTimeDisplay();
-            videoScreenCanvas.repaint();
-        });
-        leftBtns.add(replayBtn);
-
         // Trailer vs Teaser Switch
-        JButton switchTrackBtn = new JButton(isTeaserMode ? "🎬 Switch to 4K Main Trailer" : "🔥 Switch to Teaser");
+        JButton switchTrackBtn = new JButton(isTeaserMode ? "🎬 Switch to Main Trailer" : "⚡ Switch to Teaser");
         switchTrackBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
         switchTrackBtn.setBackground(isTeaserMode ? new Color(225, 29, 72) : new Color(217, 119, 6));
         switchTrackBtn.setForeground(Color.WHITE);
@@ -301,7 +328,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
             totalDurationSec = isTeaserMode ? 75 : 166;
             progressSlider.setMaximum(totalDurationSec);
             currentTimeSec = 0;
-            switchTrackBtn.setText(isTeaserMode ? "🎬 Switch to 4K Main Trailer" : "🔥 Switch to Teaser");
+            switchTrackBtn.setText(isTeaserMode ? "🎬 Switch to Main Trailer" : "⚡ Switch to Teaser");
             switchTrackBtn.setBackground(isTeaserMode ? new Color(225, 29, 72) : new Color(217, 119, 6));
             updateTimeDisplay();
             videoScreenCanvas.repaint();
@@ -363,7 +390,7 @@ public class InAppCinemaPlayerDialog extends JDialog {
             if (isPlaying) {
                 currentTimeSec++;
                 if (currentTimeSec >= totalDurationSec) {
-                    currentTimeSec = 0; // loop
+                    currentTimeSec = 0;
                 }
                 progressSlider.setValue(currentTimeSec);
                 updateTimeDisplay();
@@ -396,24 +423,20 @@ public class InAppCinemaPlayerDialog extends JDialog {
             return;
         }
 
-        // Realistic synchronized dialogue cues for in-app cinematic playback
         String subText = "";
         int phase = currentTimeSec % 40;
         if (phase < 8) {
-            subText = movieTitle.contains("Dune") ? "\"Power over spice is power over all...\""
-                    : (movieTitle.contains("Interstellar") ? "\"Do not go gentle into that good night...\""
-                    : (movieTitle.contains("Kalki") ? "\"The prophecy of the Tenth Avatar awakens...\""
-                    : (movieTitle.contains("Deadpool") ? "\"I am Marvel Jesus, baby!\""
-                    : "\"Experience the cinematic event of the decade...\"")));
+            subText = movieTitle.contains("Thalapathy") ? "\"Jana Nayagan will restore order...\""
+                    : (movieTitle.contains("Avengers") ? "\"Doctor Doom will remake the multiverse in his image.\""
+                    : (movieTitle.contains("Toxic") ? "\"Welcome to the international syndicate war.\""
+                    : (movieTitle.contains("Spirit") ? "\"The law exists to be enforced without mercy.\""
+                    : "\"Experience the 2026 cinematic spectacle in IMAX 4K...\"")));
         } else if (phase < 18) {
-            subText = movieTitle.contains("Dune") ? "\"May thy knife chip and shatter!\""
-                    : (movieTitle.contains("Interstellar") ? "\"We used to look up at the sky and wonder at our place in the stars.\""
-                    : (movieTitle.contains("Oppenheimer") ? "\"Now I am become Death, the destroyer of worlds.\""
-                    : "\"In Theatres Worldwide • Booking Live on BookMyShow\""));
-        } else if (phase < 28) {
             subText = "\"Sound mastered exclusively in DOLBY ATMOS 7.1 & IMAX LASER\"";
+        } else if (phase < 28) {
+            subText = "\"Book tickets live across all Chennai and Campus multiplexes on BookMyShow\"";
         } else {
-            subText = "\"Tickets available across all campus multiplex screens.\"";
+            subText = "\"Real-time seat occupancy and digital passes powered by NEXUS\"";
         }
 
         if ("Tamil".equals(lang)) {
@@ -421,21 +444,25 @@ public class InAppCinemaPlayerDialog extends JDialog {
         } else if ("Telugu".equals(lang)) {
             subText = "[తెలుగు] " + subText;
         } else if ("Hindi".equals(lang)) {
-            subText = "[हिंदी] " + subText;
+            subText = "[हिन्दी] " + subText;
         }
 
         subtitleLabel.setText(subText);
     }
 
     /**
-     * Launches Microsoft Edge in pure App Mode (--app) with ZERO browser address bar,
-     * zero browser tabs, and zero toolbars. Appears as a dedicated native desktop video player application!
+     * Launches Microsoft Edge in standalone video player app mode (--app).
+     * Uses watch links (?v=...) which NEVER get blocked by YouTube embed restrictions.
      */
     public void launchStandaloneAppWindow() {
         String targetUrl = isTeaserMode ? teaserUrl : trailerUrl;
+        if (targetUrl == null || targetUrl.isEmpty()) {
+            targetUrl = BookMyShowScraper.resolveWorkingYouTubeTrailer(movieTitle, isTeaserMode);
+        }
+
         String videoId = extractYouTubeVideoId(targetUrl);
-        String embedUrl = (videoId != null && !videoId.isEmpty())
-                ? "https://www.youtube.com/embed/" + videoId + "?autoplay=1&modestbranding=1&rel=0&iv_load_policy=3"
+        String finalUrl = (videoId != null && !videoId.isEmpty())
+                ? "https://www.youtube.com/watch?v=" + videoId + "&autoplay=1"
                 : targetUrl;
 
         String edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
@@ -445,21 +472,37 @@ public class InAppCinemaPlayerDialog extends JDialog {
 
         try {
             if (new File(edgePath).exists()) {
-                // Launch Edge in Standalone Native Video Player App Mode
                 ProcessBuilder pb = new ProcessBuilder(
                         edgePath,
-                        "--app=" + embedUrl,
-                        "--window-size=1080,640",
-                        "--window-position=200,150",
-                        "--user-data-dir=" + System.getProperty("java.io.tmpdir") + "\\nexus_player_profile"
+                        "--app=" + finalUrl,
+                        "--window-size=1120,680",
+                        "--window-position=180,120"
                 );
                 pb.start();
-            } else {
-                // Fallback
-                Desktop.getDesktop().browse(new java.net.URI(embedUrl));
+                return;
             }
         } catch (Exception ex) {
-            System.err.println("[InAppPlayer] Standalone launch failed: " + ex.getMessage());
+            System.err.println("[InAppPlayer] Standalone Edge launch: " + ex.getMessage());
+        }
+
+        openInDefaultBrowser();
+    }
+
+    public void openInDefaultBrowser() {
+        String targetUrl = isTeaserMode ? teaserUrl : trailerUrl;
+        if (targetUrl == null || targetUrl.isEmpty()) {
+            targetUrl = BookMyShowScraper.resolveWorkingYouTubeTrailer(movieTitle, isTeaserMode);
+        }
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(new URI(targetUrl));
+            } else {
+                Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", "start", "\"\"", targetUrl});
+            }
+        } catch (Exception e) {
+            try {
+                Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", "start", "\"\"", targetUrl});
+            } catch (Exception ignored) {}
         }
     }
 

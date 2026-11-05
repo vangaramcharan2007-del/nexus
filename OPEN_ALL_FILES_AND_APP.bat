@@ -1,16 +1,16 @@
 @echo off
-title NEXUS V10 Plus Academic Review Workspace Launcher
+title NEXUS V11 Plus Academic Review Workspace Launcher
 color 0A
 
 echo =====================================================================
-echo   SRM B.Tech CSE - NEXUS V10 Review Workspace Launcher
+echo   SRM B.Tech CSE - NEXUS V11 Review Workspace Launcher
 echo   Candidate : Ram Charan Vanga (RA2511027010164)
 echo   Target    : Review 1, Review 2, Review 3 and Viva All-In-One Launcher
 echo =====================================================================
 echo.
 
-echo [1/4] Launching NEXUS V10.0 Core Application...
-start "NEXUS V10 Core Platform" "C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition\Launch_V10_Core.bat"
+echo [1/4] Launching NEXUS V11.0 Real-Time Application...
+start "NEXUS V11 Platform" "C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition\Launch_V11_Realtime.bat"
 
 echo [2/4] Opening Rubric Project Folders in Windows Explorer...
 start "" explorer.exe "C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition\src\nexus"

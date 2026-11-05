@@ -149,6 +149,37 @@ public class MediaPanel extends JPanel implements NexusListener {
         });
         locationBar.add(switchFeedBtn);
 
+        JButton bmsJsoupSyncBtn = new JButton("📡 Sync BMS (Jsoup Live)");
+        bmsJsoupSyncBtn.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        bmsJsoupSyncBtn.setBackground(new Color(225, 29, 72));
+        bmsJsoupSyncBtn.setForeground(Color.WHITE);
+        bmsJsoupSyncBtn.setFocusPainted(false);
+        bmsJsoupSyncBtn.setToolTipText("Scrape BookMyShow Chennai live cinema catalog using Jsoup in real time");
+        bmsJsoupSyncBtn.addActionListener(e -> {
+            bmsJsoupSyncBtn.setEnabled(false);
+            bmsJsoupSyncBtn.setText("📡 Scraping BMS...");
+            new SwingWorker<Integer, Void>() {
+                @Override
+                protected Integer doInBackground() {
+                    return cinemaService.syncWithBookMyShowJsoup("chennai");
+                }
+                @Override
+                protected void done() {
+                    bmsJsoupSyncBtn.setEnabled(true);
+                    bmsJsoupSyncBtn.setText("📡 Sync BMS (Jsoup Live)");
+                    try {
+                        int count = get();
+                        refreshMovieCombo();
+                        liveSyncPill.setText("🟢 " + cinemaService.getActiveSource().displayName + " (" + cinemaService.getActiveSource().latency + ")");
+                        JOptionPane.showMessageDialog(MediaPanel.this,
+                                "BookMyShow Jsoup Real-Time Engine Active!\nSynced " + count + " verified 2026 movies & showtimes.",
+                                "BookMyShow Jsoup Scraper", JOptionPane.INFORMATION_MESSAGE);
+                    } catch (Exception ignored) {}
+                }
+            }.execute();
+        });
+        locationBar.add(bmsJsoupSyncBtn);
+
         topContainer.add(locationBar);
         topContainer.add(Box.createVerticalStrut(4));
 
@@ -346,7 +377,20 @@ public class MediaPanel extends JPanel implements NexusListener {
 
     private void playCurrentMovieTrailer(boolean isTeaser) {
         String movie = (String) movieCombo.getSelectedItem();
+        cinemaService.openDirectVideo(movie, isTeaser);
         cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), movie, isTeaser);
+    }
+
+    private void refreshMovieCombo() {
+        if (movieCombo == null) return;
+        String current = (String) movieCombo.getSelectedItem();
+        movieCombo.removeAllItems();
+        for (String m : cinemaService.getMovies()) {
+            movieCombo.addItem(m);
+        }
+        if (current != null) {
+            movieCombo.setSelectedItem(current);
+        }
     }
 
     private void showMovieDetailsDialog(String movieTitle) {
@@ -961,7 +1005,20 @@ public class MediaPanel extends JPanel implements NexusListener {
         trailerBtn.setBackground(new Color(225, 29, 72));
         trailerBtn.setForeground(Color.WHITE);
         trailerBtn.setFocusPainted(false);
-        trailerBtn.addActionListener(e -> cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), b.getMovieTitle(), false));
+        trailerBtn.addActionListener(e -> {
+            cinemaService.openDirectVideo(b.getMovieTitle(), false);
+            cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), b.getMovieTitle(), false);
+        });
+
+        JButton teaserBtn = new JButton("⚡ Teaser");
+        teaserBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+        teaserBtn.setBackground(new Color(217, 119, 6));
+        teaserBtn.setForeground(Color.WHITE);
+        teaserBtn.setFocusPainted(false);
+        teaserBtn.addActionListener(e -> {
+            cinemaService.openDirectVideo(b.getMovieTitle(), true);
+            cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), b.getMovieTitle(), true);
+        });
 
         JButton viewPassBtn = new JButton("View Pass");
         viewPassBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
@@ -970,6 +1027,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         viewPassBtn.addActionListener(e -> showDigitalTicketDialog(b));
 
         actionBtnRow.add(trailerBtn);
+        actionBtnRow.add(teaserBtn);
         actionBtnRow.add(viewPassBtn);
 
         right.add(seats);
@@ -1077,7 +1135,10 @@ public class MediaPanel extends JPanel implements NexusListener {
             playTrailerBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
             playTrailerBtn.setBackground(new Color(225, 29, 72));
             playTrailerBtn.setForeground(Color.WHITE);
-            playTrailerBtn.addActionListener(e -> cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), false));
+            playTrailerBtn.addActionListener(e -> {
+                cinemaService.openDirectVideo(item.getTitle(), false);
+                cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), false);
+            });
 
             JButton del = new JButton("🗑️");
             del.addActionListener(e -> service.deleteMedia(item.getId()));
@@ -1120,13 +1181,19 @@ public class MediaPanel extends JPanel implements NexusListener {
             playTrailerBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
             playTrailerBtn.setBackground(new Color(225, 29, 72));
             playTrailerBtn.setForeground(Color.WHITE);
-            playTrailerBtn.addActionListener(e -> cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), false));
+            playTrailerBtn.addActionListener(e -> {
+                cinemaService.openDirectVideo(item.getTitle(), false);
+                cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), false);
+            });
 
             JButton playTeaserBtn = new JButton("🔥 In-App");
             playTeaserBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
             playTeaserBtn.setBackground(new Color(217, 119, 6));
             playTeaserBtn.setForeground(Color.WHITE);
-            playTeaserBtn.addActionListener(e -> cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), true));
+            playTeaserBtn.addActionListener(e -> {
+                cinemaService.openDirectVideo(item.getTitle(), true);
+                cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), item.getTitle(), true);
+            });
 
             JButton addWatchlistBtn = new JButton("+ Watchlist");
             addWatchlistBtn.setFont(new Font("Segoe UI", Font.PLAIN, 10));
