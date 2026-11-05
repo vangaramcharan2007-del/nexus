@@ -10,7 +10,7 @@ echo =====================================================================
 echo.
 
 echo [1/4] Launching NEXUS V10.0 Core Application...
-start "NEXUS V10 Core Platform" cmd /k "cd /d C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition && call Launch_V10_Core.bat"
+start "NEXUS V10 Core Platform" "C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition\Launch_V10_Core.bat"
 
 echo [2/4] Opening Rubric Project Folders in Windows Explorer...
 start "" explorer.exe "C:\Users\vanga\Desktop\NEXUS_Java_V7_Startup_Edition\src\nexus"

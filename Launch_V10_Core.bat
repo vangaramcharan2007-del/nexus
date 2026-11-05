@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 echo ===================================================
 echo   Compiling & Launching NEXUS V10.0 (Core Edition)
 echo ===================================================
