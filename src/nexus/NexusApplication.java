@@ -46,7 +46,7 @@ import nexus.auth.LoginPanel;
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - V11.0 Real-Time Cinema Edition");
+        setTitle("NEXUS Enterprise Platform - V13.0 Exception & Resilience Edition");
         setSize(1100, 740);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -107,6 +107,7 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("📋 Tasks", new TaskPanel(taskService));
         tabbedPane.addTab("🎯 Strategic Goals", new GoalPanel(goalService));
         tabbedPane.addTab("📊 Executive Analytics", new AnalyticsPanel(analyticsService));
+        tabbedPane.addTab("🛡️ Exception Center (V13)", new nexus.common.exceptions.ExceptionLabPanel());
         
         // Setup CardLayout with Login
         CardLayout cardLayout = new CardLayout();
@@ -182,7 +183,7 @@ public class NexusApplication extends JFrame {
         JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         leftPanel.setOpaque(false);
 
-        JLabel brand = new JLabel("⚡ NEXUS 11.0");
+        JLabel brand = new JLabel("⚡ NEXUS 13.0");
         brand.setFont(new Font("Consolas", Font.BOLD, 15));
         brand.setForeground(new Color(0, 255, 255));
 
@@ -220,7 +221,7 @@ public class NexusApplication extends JFrame {
         JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         rightPanel.setOpaque(false);
 
-        JLabel coreBadge = new JLabel(" REALTIME V11 ");
+        JLabel coreBadge = new JLabel(" EXCEPTION LAB V13 ");
         coreBadge.setFont(new Font("Segoe UI", Font.BOLD, 10));
         coreBadge.setOpaque(true);
         coreBadge.setBackground(new Color(16, 185, 129, 40));
