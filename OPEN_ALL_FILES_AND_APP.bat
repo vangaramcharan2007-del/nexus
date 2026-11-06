@@ -16,31 +16,10 @@ echo [1/4] Launching NEXUS V11.0 Real-Time Cinema Application...
 start "NEXUS V11 Platform" "%PROJ%\Launch_V11_Realtime.bat"
 
 echo [2/4] Opening All Rubric Architecture Files in VS Code Tabs...
-set "CODE_PATH=C:\Users\vanga\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd"
-if not exist "%CODE_PATH%" set "CODE_PATH=code"
+set "CODE_EXE=C:\Users\vanga\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+if not exist "%CODE_EXE%" set "CODE_EXE=Code.exe"
 
-start "" "%CODE_PATH%" "%PROJ%" ^
-    "%PROJ%\src\nexus\Main.java" ^
-    "%PROJ%\src\nexus\NexusApplication.java" ^
-    "%PROJ%\src\nexus\database\DatabaseService.java" ^
-    "%PROJ%\src\nexus\tasks\JdbcTaskRepository.java" ^
-    "%PROJ%\src\nexus\finance\JdbcTransactionRepository.java" ^
-    "%PROJ%\src\nexus\database\IRepository.java" ^
-    "%PROJ%\src\nexus\tasks\ITaskRepository.java" ^
-    "%PROJ%\src\nexus\finance\IFinanceEngine.java" ^
-    "%PROJ%\src\nexus\media\ICinemaGateway.java" ^
-    "%PROJ%\src\nexus\common\exceptions\NexusException.java" ^
-    "%PROJ%\src\nexus\common\exceptions\InsufficientFundsException.java" ^
-    "%PROJ%\src\nexus\common\exceptions\SeatAlreadyBookedException.java" ^
-    "%PROJ%\src\nexus\realtime\BookMyShowScraper.java" ^
-    "%PROJ%\src\nexus\Review2VerificationRunner.java" ^
-    "%PROJ%\src\nexus\media\LiveDistrictCinemaService.java" ^
-    "%PROJ%\src\nexus\media\MediaPanel.java" ^
-    "%PROJ%\src\nexus\media\InAppCinemaPlayerDialog.java" ^
-    "%PROJ%\src\nexus\analytics\NexusScore.java" ^
-    "%DESK%\NEXUS_Presentation_Script.md" ^
-    "%DESK%\NEXUS_QnA_CheatSheet.md" ^
-    "%DESK%\NEXUS_Master_Documentation.md"
+start "" "%CODE_EXE%" "%PROJ%" "%PROJ%\src\nexus\Main.java" "%PROJ%\src\nexus\NexusApplication.java" "%PROJ%\src\nexus\database\DatabaseService.java" "%PROJ%\src\nexus\tasks\JdbcTaskRepository.java" "%PROJ%\src\nexus\finance\JdbcTransactionRepository.java" "%PROJ%\src\nexus\database\IRepository.java" "%PROJ%\src\nexus\tasks\ITaskRepository.java" "%PROJ%\src\nexus\finance\IFinanceEngine.java" "%PROJ%\src\nexus\media\ICinemaGateway.java" "%PROJ%\src\nexus\common\exceptions\NexusException.java" "%PROJ%\src\nexus\common\exceptions\InsufficientFundsException.java" "%PROJ%\src\nexus\common\exceptions\SeatAlreadyBookedException.java" "%PROJ%\src\nexus\realtime\BookMyShowScraper.java" "%PROJ%\src\nexus\Review2VerificationRunner.java" "%PROJ%\src\nexus\media\LiveDistrictCinemaService.java" "%PROJ%\src\nexus\media\MediaPanel.java" "%PROJ%\src\nexus\media\InAppCinemaPlayerDialog.java" "%PROJ%\src\nexus\analytics\NexusScore.java" "%DESK%\NEXUS_Presentation_Script.md" "%DESK%\NEXUS_QnA_CheatSheet.md" "%DESK%\NEXUS_Master_Documentation.md"
 
 echo [3/4] Opening Rubric Project Folders in Windows Explorer...
 start "" explorer.exe "%PROJ%\src\nexus"
