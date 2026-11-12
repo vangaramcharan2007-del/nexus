@@ -383,23 +383,30 @@ public class LiveDistrictCinemaService implements ICinemaGateway {
             url = isTeaser ? getTeaserUrl(movieTitle) : getTrailerUrl(movieTitle);
         }
 
-        String edgePath = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-        if (!new File(edgePath).exists()) {
-            edgePath = "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe";
-        }
+        String localApp = System.getenv("LOCALAPPDATA");
+        String[] candidateBrowsers = {
+                (localApp != null ? localApp + "\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" : null),
+                "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+                "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+                "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+                "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+        };
 
-        try {
-            if (new File(edgePath).exists()) {
-                ProcessBuilder pb = new ProcessBuilder(
-                        edgePath,
-                        "--app=" + url,
-                        "--window-size=1120,680",
-                        "--window-position=180,120"
-                );
-                pb.start();
-                return;
+        for (String bPath : candidateBrowsers) {
+            if (bPath != null && new File(bPath).exists()) {
+                try {
+                    ProcessBuilder pb = new ProcessBuilder(
+                            bPath,
+                            "--app=" + url,
+                            "--window-size=1120,680",
+                            "--window-position=180,120"
+                    );
+                    pb.start();
+                    return;
+                } catch (Exception ignored) {}
             }
-        } catch (Exception ignored) {}
+        }
 
         try {
             if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {

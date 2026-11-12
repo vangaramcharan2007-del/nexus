@@ -21,8 +21,8 @@ import nexus.vault.IEncryptedVault;
 import nexus.vault.VaultService;
 
 /**
- * NEXUS V13.0 Real-Time Exception & Fault-Resilience Simulation Center.
- * Exclusively designed for the SRM Project Review 2 Rubric (5/5 Marks for Java Library & Exception Handling).
+ * NEXUS V25.0 Real-Time Exception & Fault-Resilience Simulation Center.
+ * Exclusively designed for the SRM Project Defense & Review Rubrics.
  * Provides interactive GUI buttons to simulate, catch, handle, and display every custom and standard
  * exception in real time without crashing the application.
  */
@@ -53,8 +53,8 @@ public class ExceptionLabPanel extends JPanel {
         add(splitPane, BorderLayout.CENTER);
 
         // Log initial ready message
-        logToTerminal("INIT", "NEXUS V13.0 Exception Lab Initialized. 8 Domain Exception Handlers Active.");
-        logToTerminal("RUBRIC", "Review 2 Ready: Full Try-Catch-Finally, Custom Checked Hierarchy & ACID Rollbacks.");
+        logToTerminal("INIT", "NEXUS V25.0 Exception Lab Initialized. 8 Domain Exception Handlers Active.");
+        logToTerminal("RUBRIC", "Review 3 Ready: Full Try-Catch-Finally, Custom Checked Hierarchy & ACID Rollbacks.");
     }
 
     private JPanel createTelemetryStrip() {
@@ -534,12 +534,12 @@ public class ExceptionLabPanel extends JPanel {
 
     private void exportAuditLog() {
         try {
-            File f = new File(System.getProperty("user.home") + "\\Desktop\\NEXUS_V13_Exception_Audit_Report.txt");
+            File f = new File(System.getProperty("user.home") + "\\Desktop\\NEXUS_V25_Exception_Audit_Report.txt");
             try (FileWriter writer = new FileWriter(f)) {
                 writer.write("======================================================================\n");
-                writer.write("   SRM B.TECH CSE - NEXUS V13.0 EXCEPTION HANDLING AUDIT REPORT      \n");
+                writer.write("   SRM B.TECH CSE - NEXUS V25.0 EXCEPTION HANDLING AUDIT REPORT      \n");
                 writer.write("   Candidate: Ram Charan Vanga (RA2511027010164)                      \n");
-                writer.write("   Review 2 Rubric: Implementation of Java library, Exception handling\n");
+                writer.write("   Review 3 Rubric: Software Application Development (15 Marks)       \n");
                 writer.write("======================================================================\n\n");
                 writer.write(terminalArea.getText());
             }

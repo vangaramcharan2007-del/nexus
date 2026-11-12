@@ -34,10 +34,24 @@ import nexus.media.MediaStatus;
 public class DatabaseService implements NexusListener {
     private static final String URL = "jdbc:sqlite:" + (System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db");
     
+    private static DatabaseService instance;
+
+    public static synchronized DatabaseService getInstance() {
+        if (instance == null) {
+            instance = new DatabaseService();
+        }
+        return instance;
+    }
+
     private Connection writeConnection;
     private final ExecutorService dbWriterQueue;
 
     public DatabaseService() {
+        synchronized (DatabaseService.class) {
+            if (instance == null) {
+                instance = this;
+            }
+        }
         dbWriterQueue = Executors.newSingleThreadExecutor();
         initDatabase();
         EventBus.getInstance().subscribeToAll(this);
@@ -59,12 +73,16 @@ public class DatabaseService implements NexusListener {
     private void initDatabase() {
         try {
             Class.forName("org.sqlite.JDBC");
-            writeConnection = DriverManager.getConnection(URL);
+            org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
+            config.setBusyTimeout(10000);
+            config.setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL);
+            config.setSynchronous(org.sqlite.SQLiteConfig.SynchronousMode.NORMAL);
+            writeConnection = config.createConnection(URL);
             
             try (Statement stmt = writeConnection.createStatement()) {
                 // Enable Write-Ahead Logging & Busy Timeout to eliminate database locks
                 stmt.execute("PRAGMA journal_mode = WAL;");
-                stmt.execute("PRAGMA busy_timeout = 5000;");
+                stmt.execute("PRAGMA busy_timeout = 10000;");
 
                 // 1. Tasks
                 stmt.execute("CREATE TABLE IF NOT EXISTS tasks (" +
