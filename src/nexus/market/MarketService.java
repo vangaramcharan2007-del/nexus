@@ -112,12 +112,15 @@ public class MarketService implements NexusListener {
         }
 
         // Confirmed financial success: notify subsystems, clear cart
-        EventBus.getInstance().publish(new NexusEvent("PRODUCT_PURCHASED", total, "Market"));
-        for (CartItem item : cart.getItems()) {
-            EventBus.getInstance().publish(new NexusEvent("ITEM_PURCHASED", item.getProduct(), "Market"));
+        try {
+            EventBus.getInstance().publish(new NexusEvent("PRODUCT_PURCHASED", total, "Market"));
+            for (CartItem item : cart.getItems()) {
+                EventBus.getInstance().publish(new NexusEvent("ITEM_PURCHASED", item.getProduct(), "Market"));
+            }
+        } finally {
+            cart.clear();
+            EventBus.getInstance().publish(new NexusEvent("CART_UPDATED", cart, "Market"));
         }
-        cart.clear();
-        EventBus.getInstance().publish(new NexusEvent("CART_UPDATED", cart, "Market"));
     }
     
     public ShoppingCart getCart() { return cart; }

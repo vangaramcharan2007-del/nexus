@@ -1,5 +1,6 @@
 package nexus.database;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -19,6 +20,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import nexus.common.EventBus;
 import nexus.common.NexusEvent;
@@ -50,8 +52,10 @@ public class DatabaseService implements NexusListener {
     private static String resolveDbPath() {
         if ("true".equalsIgnoreCase(System.getProperty("nexus.testMode", "false"))) {
             String testPath = System.getProperty("nexus.db.path");
-            if (testPath == null || "nexus.db".equals(testPath)) {
-                return "nexus_isolated_test.db";
+            if (testPath == null || "nexus.db".equals(testPath) || testPath.endsWith("/nexus.db") || testPath.endsWith("\\nexus.db")) {
+                File testDir = new File("build/test-db");
+                if (!testDir.exists()) testDir.mkdirs();
+                return "build/test-db/nexus_test_isolated.db";
             }
             return testPath;
         }
@@ -99,6 +103,9 @@ public class DatabaseService implements NexusListener {
     private final AtomicInteger failedWriteCount = new AtomicInteger(0);
     private volatile String lastWriteError = null;
 
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Object writeLock = new Object();
+
     public DatabaseService() {
         synchronized (DatabaseService.class) {
             if (instance == null || instance.isClosed()) {
@@ -120,8 +127,8 @@ public class DatabaseService implements NexusListener {
         return closed.get();
     }
 
-    public synchronized boolean isConnectionAvailable() {
-        if (closed.get() || writeConnection == null) {
+    public boolean isConnectionAvailable() {
+        if (writeConnection == null) {
             return false;
         }
         try {
@@ -141,14 +148,15 @@ public class DatabaseService implements NexusListener {
 
     /**
      * Gracefully flushes remaining pending writes and closes database connections.
-     * Guaranteed to be idempotent and safe against repeated calls.
+     * Guaranteed to be deadlock-free, idempotent, and thread-safe.
      */
-    public synchronized void close() {
+    public void close() {
         if (!closed.compareAndSet(false, true)) {
             return; // Already closed
         }
         EventBus.getInstance().unsubscribeFromAll(this);
 
+        // Phase 1: Wait for queued writes to finish draining without holding any lock
         if (dbWriterQueue != null && !dbWriterQueue.isShutdown()) {
             dbWriterQueue.shutdown();
             try {
@@ -161,6 +169,8 @@ public class DatabaseService implements NexusListener {
             }
         }
 
+        // Phase 2: Acquire exclusive write lock to ensure active reader queries finish before closing connection
+        rwLock.writeLock().lock();
         try {
             if (writeConnection != null && !writeConnection.isClosed()) {
                 try (Statement stmt = writeConnection.createStatement()) {
@@ -170,9 +180,11 @@ public class DatabaseService implements NexusListener {
             }
         } catch (SQLException e) {
             System.err.println("[DatabaseService] Error closing writeConnection: " + e.getMessage());
+        } finally {
+            rwLock.writeLock().unlock();
         }
 
-        // Reset singleton reference so future getInstance() calls create an active instance
+        // Phase 3: Reset singleton reference
         synchronized (DatabaseService.class) {
             if (instance == this) {
                 instance = null;
@@ -343,66 +355,86 @@ public class DatabaseService implements NexusListener {
 
     public List<Task> loadTasks() {
         List<Task> tasks = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return tasks;
         }
-        String sql = "SELECT id, title, priority, completed, due_date, category FROM tasks";
-        try (Statement stmt = writeConnection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String pStr = rs.getString("priority");
-                TaskPriority prio = TaskPriority.MEDIUM;
-                try {
-                    prio = TaskPriority.valueOf(pStr);
-                } catch (Exception ignored) {}
-
-                String due = rs.getString("due_date");
-                String cat = rs.getString("category");
-
-                tasks.add(new Task(
-                    rs.getString("id"),
-                    rs.getString("title"),
-                    prio,
-                    rs.getInt("completed") == 1,
-                    cat != null ? cat : "General",
-                    due != null ? due : "Today"
-                ));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return tasks;
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading tasks: " + e.getMessage());
+            String sql = "SELECT id, title, priority, completed, due_date, category FROM tasks";
+            try (Statement stmt = writeConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String pStr = rs.getString("priority");
+                    TaskPriority prio = TaskPriority.MEDIUM;
+                    try {
+                        prio = TaskPriority.valueOf(pStr);
+                    } catch (Exception ignored) {}
+
+                    String due = rs.getString("due_date");
+                    String cat = rs.getString("category");
+
+                    tasks.add(new Task(
+                        rs.getString("id"),
+                        rs.getString("title"),
+                        prio,
+                        rs.getInt("completed") == 1,
+                        cat != null ? cat : "General",
+                        due != null ? due : "Today"
+                    ));
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading tasks: " + e.getMessage());
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
         }
         return tasks;
     }
     
     public List<Transaction> loadTransactions() {
         List<Transaction> transactions = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return transactions;
         }
-        String sql = "SELECT id, description, amount, date, category FROM transactions ORDER BY date DESC";
-        try (Statement stmt = writeConnection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String catStr = rs.getString("category");
-                TransactionCategory cat = TransactionCategory.OTHER;
-                if (catStr != null) {
-                    try {
-                        cat = TransactionCategory.valueOf(catStr);
-                    } catch (Exception ex) {
-                        cat = TransactionCategory.OTHER;
-                    }
-                }
-
-                transactions.add(new Transaction(
-                    rs.getString("id"),
-                    rs.getString("description"),
-                    rs.getDouble("amount"),
-                    new Date(rs.getLong("date")),
-                    cat
-                ));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return transactions;
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading transactions: " + e.getMessage());
+            String sql = "SELECT id, description, amount, date, category FROM transactions ORDER BY date DESC";
+            try (Statement stmt = writeConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String catStr = rs.getString("category");
+                    TransactionCategory cat = TransactionCategory.OTHER;
+                    if (catStr != null) {
+                        try {
+                            cat = TransactionCategory.valueOf(catStr);
+                        } catch (Exception ex) {
+                            cat = TransactionCategory.OTHER;
+                        }
+                    }
+
+                    transactions.add(new Transaction(
+                        rs.getString("id"),
+                        rs.getString("description"),
+                        rs.getDouble("amount"),
+                        new Date(rs.getLong("date")),
+                        cat
+                    ));
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading transactions: " + e.getMessage());
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
         }
         return transactions;
     }
@@ -423,122 +455,162 @@ public class DatabaseService implements NexusListener {
 
     public List<Goal> loadGoals() {
         List<Goal> goals = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return goals;
         }
-        String sql = "SELECT id, title, deadline, category FROM goals";
-        try (Statement stmt = writeConnection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String gId = rs.getString("id");
-                String title = rs.getString("title");
-                String deadline = rs.getString("deadline");
-                String category = rs.getString("category");
-
-                List<Milestone> milestones = loadMilestonesForGoal(gId);
-                goals.add(new Goal(gId, title, category, deadline, milestones));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return goals;
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading goals: " + e.getMessage());
+            String sql = "SELECT id, title, deadline, category FROM goals";
+            try (Statement stmt = writeConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String gId = rs.getString("id");
+                    String title = rs.getString("title");
+                    String deadline = rs.getString("deadline");
+                    String category = rs.getString("category");
+
+                    List<Milestone> milestones = loadMilestonesForGoal(gId);
+                    goals.add(new Goal(gId, title, category, deadline, milestones));
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading goals: " + e.getMessage());
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
         }
         return goals;
     }
 
     private List<Milestone> loadMilestonesForGoal(String goalId) {
         List<Milestone> list = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return list;
         }
-        String sql = "SELECT id, description, completed FROM milestones WHERE goal_id = ?";
-        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-            pstmt.setString(1, goalId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                while (rs.next()) {
-                    list.add(new Milestone(
-                        rs.getString("id"),
-                        rs.getString("description"),
-                        rs.getInt("completed") == 1
-                    ));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return list;
+            }
+            String sql = "SELECT id, description, completed FROM milestones WHERE goal_id = ?";
+            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                pstmt.setString(1, goalId);
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new Milestone(
+                            rs.getString("id"),
+                            rs.getString("description"),
+                            rs.getInt("completed") == 1
+                        ));
+                    }
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading milestones: " + e.getMessage());
                 }
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading milestones: " + e.getMessage());
+        } finally {
+            rwLock.readLock().unlock();
         }
         return list;
     }
 
     public List<MediaItem> loadMedia() {
         List<MediaItem> mediaList = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return mediaList;
         }
-        String sql = "SELECT id, title, type, status, rating, poster_url, genres, rating_score, summary, year FROM media_items";
-        try (Statement stmt = writeConnection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                MediaType type = MediaType.MOVIE;
-                try {
-                    type = MediaType.valueOf(rs.getString("type"));
-                } catch (Exception ignored) {}
-
-                MediaStatus status = MediaStatus.WANT_TO_CONSUME;
-                try {
-                    status = MediaStatus.valueOf(rs.getString("status"));
-                } catch (Exception ignored) {}
-
-                mediaList.add(new MediaItem(
-                    rs.getString("id"),
-                    rs.getString("title"),
-                    type,
-                    status,
-                    rs.getInt("rating"),
-                    rs.getString("poster_url"),
-                    rs.getString("genres"),
-                    rs.getDouble("rating_score"),
-                    rs.getString("summary"),
-                    rs.getString("year")
-                ));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return mediaList;
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading media: " + e.getMessage());
+            String sql = "SELECT id, title, type, status, rating, poster_url, genres, rating_score, summary, year FROM media_items";
+            try (Statement stmt = writeConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    MediaType type = MediaType.MOVIE;
+                    try {
+                        type = MediaType.valueOf(rs.getString("type"));
+                    } catch (Exception ignored) {}
+
+                    MediaStatus status = MediaStatus.WANT_TO_CONSUME;
+                    try {
+                        status = MediaStatus.valueOf(rs.getString("status"));
+                    } catch (Exception ignored) {}
+
+                    mediaList.add(new MediaItem(
+                        rs.getString("id"),
+                        rs.getString("title"),
+                        type,
+                        status,
+                        rs.getInt("rating"),
+                        rs.getString("poster_url"),
+                        rs.getString("genres"),
+                        rs.getDouble("rating_score"),
+                        rs.getString("summary"),
+                        rs.getString("year")
+                    ));
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading media: " + e.getMessage());
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
         }
         return mediaList;
     }
 
     public List<CinemaBooking> loadBookings() {
         List<CinemaBooking> list = new ArrayList<>();
-        if (!isConnectionAvailable()) {
+        if (closed.get()) {
             return list;
         }
-        String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method FROM cinema_bookings ORDER BY booking_date DESC";
-        try (Statement stmt = writeConnection.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String seatsRaw = rs.getString("seats");
-                List<String> seatsList = seatsRaw != null ? Arrays.asList(seatsRaw.split(",\\s*")) : new ArrayList<>();
-                String payMethod = "NEXUS Capital Wallet";
-                try {
-                    payMethod = rs.getString("payment_method");
-                    if (payMethod == null || payMethod.isEmpty()) payMethod = "NEXUS Capital Wallet";
-                } catch (Exception ignored) {}
-
-                list.add(new CinemaBooking(
-                    rs.getString("id"),
-                    rs.getString("movie_title"),
-                    rs.getString("theatre"),
-                    rs.getString("showtime"),
-                    seatsList,
-                    rs.getDouble("base_price"),
-                    rs.getDouble("discount"),
-                    rs.getString("promo_code"),
-                    rs.getDouble("final_total"),
-                    new Date(rs.getLong("booking_date")),
-                    rs.getString("status"),
-                    payMethod
-                ));
+        rwLock.readLock().lock();
+        try {
+            if (!isConnectionAvailable()) {
+                return list;
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseService] Error loading bookings: " + e.getMessage());
+            String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method FROM cinema_bookings ORDER BY booking_date DESC";
+            try (Statement stmt = writeConnection.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String seatsRaw = rs.getString("seats");
+                    List<String> seatsList = seatsRaw != null ? Arrays.asList(seatsRaw.split(",\\s*")) : new ArrayList<>();
+                    String payMethod = "NEXUS Capital Wallet";
+                    try {
+                        payMethod = rs.getString("payment_method");
+                        if (payMethod == null || payMethod.isEmpty()) payMethod = "NEXUS Capital Wallet";
+                    } catch (Exception ignored) {}
+
+                    list.add(new CinemaBooking(
+                        rs.getString("id"),
+                        rs.getString("movie_title"),
+                        rs.getString("theatre"),
+                        rs.getString("showtime"),
+                        seatsList,
+                        rs.getDouble("base_price"),
+                        rs.getDouble("discount"),
+                        rs.getString("promo_code"),
+                        rs.getDouble("final_total"),
+                        new Date(rs.getLong("booking_date")),
+                        rs.getString("status"),
+                        payMethod
+                    ));
+                }
+            } catch (SQLException e) {
+                if (!closed.get()) {
+                    System.err.println("[DatabaseService] Error loading bookings: " + e.getMessage());
+                }
+            }
+        } finally {
+            rwLock.readLock().unlock();
         }
         return list;
     }
@@ -561,8 +633,8 @@ public class DatabaseService implements NexusListener {
         
         try {
             dbWriterQueue.submit(() -> {
-                synchronized (this) {
-                    if (closed.get() || !isConnectionAvailable()) {
+                synchronized (writeLock) {
+                    if (!isConnectionAvailable()) {
                         return;
                     }
                     try {
