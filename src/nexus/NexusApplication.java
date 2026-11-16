@@ -62,7 +62,7 @@ import nexus.auth.LoginPanel;
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - V26.0 External Integration & Core Reliability Edition");
+        setTitle("NEXUS Enterprise Platform - V26.1 Reliability & Integration Verification Edition");
         setSize(1320, 820);
         setMinimumSize(new Dimension(1150, 720));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -94,7 +94,11 @@ public class NexusApplication extends JFrame {
         
         // Populate UI/Services with persistent SQLite DB data
         java.util.List<nexus.tasks.Task> loadedTasks = databaseService.loadTasks();
-        taskService.setTasks(loadedTasks);
+        if (loadedTasks.isEmpty()) {
+            taskService.seedDefaultsIfEmpty();
+        } else {
+            taskService.setTasks(loadedTasks);
+        }
         
         java.util.List<nexus.finance.Transaction> loadedTx = databaseService.loadTransactions();
         if (!loadedTx.isEmpty()) {
