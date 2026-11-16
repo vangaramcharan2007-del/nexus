@@ -50,4 +50,8 @@ public class Goal {
     public int getProgressPercentage() {
         return (int) (getProgress() * 100);
     }
+
+    public boolean isCompleted() {
+        return !milestones.isEmpty() && getProgress() >= 1.0;
+    }
 }

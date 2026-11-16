@@ -3,17 +3,30 @@ package nexus.finance;
 import nexus.common.EventBus;
 import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
-import java.util.*;
 
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * Enterprise-grade Financial Engine for NEXUS V26.
+ *
+ * V26 Core Reliability Enhancements:
+ * - Budget validation & affordability checks before debiting.
+ * - Deduplication guard: Strictly prevents duplicate transaction recording.
+ * - Atomic check-and-debit (debitIfAvailable) to guarantee transaction consistency.
+ * - Rejection of unbacked purchases with transaction rollback notifications.
+ */
 public class FinanceService implements NexusListener, IFinanceEngine {
     private Budget budget;
-    private List<Transaction> transactions;
+    private final List<Transaction> transactions;
     private List<CryptoPrice> cryptoPrices;
+    private final Set<String> processedTransactionIds = ConcurrentHashMap.newKeySet();
     
     public FinanceService() {
         budget = new Budget(10000.0);
-        transactions = new ArrayList<>();
-        cryptoPrices = new ArrayList<>();
+        transactions = new CopyOnWriteArrayList<>();
+        cryptoPrices = new CopyOnWriteArrayList<>();
         
         EventBus.getInstance().subscribe("PRODUCT_PURCHASED", this);
         EventBus.getInstance().subscribe("GOAL_COMPLETED", this);
@@ -28,29 +41,63 @@ public class FinanceService implements NexusListener, IFinanceEngine {
     public void refreshCryptoRates() {
         new Thread(() -> {
             List<CryptoPrice> rates = RealtimeFinanceService.fetchLiveCryptoRates();
-            this.cryptoPrices = rates;
+            this.cryptoPrices = new CopyOnWriteArrayList<>(rates);
             EventBus.getInstance().publish(new NexusEvent("CRYPTO_RATES_UPDATED", rates, "Finance"));
         }).start();
     }
     
+    /**
+     * Checks if the remaining budget is sufficient for the requested amount.
+     */
+    public synchronized boolean canAfford(double amount) {
+        return budget != null && budget.getRemaining() >= amount;
+    }
+
+    /**
+     * Atomically debits the amount if funds are available.
+     * @return true if debited, false if insufficient funds.
+     */
+    public synchronized boolean debitIfAvailable(double amount, String description, TransactionCategory category) {
+        if (canAfford(amount)) {
+            addTransaction(description, amount, category);
+            return true;
+        }
+        return false;
+    }
+
     public void addTransaction(String description, double amount) {
         addTransaction(description, amount, TransactionCategory.OTHER);
     }
 
-    public void addTransaction(String description, double amount, TransactionCategory category) {
+    public synchronized void addTransaction(String description, double amount, TransactionCategory category) {
         Transaction t = new Transaction(description, amount, category);
+        addTransaction(t);
+    }
+
+    public synchronized void addTransaction(Transaction t) {
+        if (t == null) return;
+        // Deduplication guard
+        if (processedTransactionIds.contains(t.getId())) {
+            System.out.println("[FinanceService] Ignored duplicate transaction: " + t.getId());
+            return;
+        }
+        processedTransactionIds.add(t.getId());
         transactions.add(0, t);
-        budget.addExpense(amount);
+        budget.addExpense(t.getAmount());
         EventBus.getInstance().publish(new NexusEvent("TRANSACTION_ADDED", t, "Finance"));
         EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
     }
 
-    public void addFunds(String description, double amount) {
+    public synchronized void addFunds(String description, double amount) {
         addFunds(description, amount, TransactionCategory.SALARY_INCOME);
     }
 
-    public void addFunds(String description, double amount, TransactionCategory category) {
+    public synchronized void addFunds(String description, double amount, TransactionCategory category) {
         Transaction t = new Transaction(description, -amount, category);
+        if (processedTransactionIds.contains(t.getId())) {
+            return;
+        }
+        processedTransactionIds.add(t.getId());
         transactions.add(0, t);
         budget.addExpense(-amount);
         EventBus.getInstance().publish(new NexusEvent("TRANSACTION_ADDED", t, "Finance"));
@@ -70,12 +117,22 @@ public class FinanceService implements NexusListener, IFinanceEngine {
     
     @Override
     public void onEvent(NexusEvent event) {
+        if (event == null) return;
+        
         if ("PRODUCT_PURCHASED".equals(event.getType())) {
             double price = (Double) event.getPayload();
-            addTransaction("Market Purchase", price, TransactionCategory.SHOPPING);
+            synchronized (this) {
+                if (!canAfford(price)) {
+                    EventBus.getInstance().publish(new NexusEvent("TRANSACTION_REJECTED", "Insufficient budget for purchase: ₹" + price, "Finance"));
+                    return;
+                }
+                addTransaction("Market Purchase", price, TransactionCategory.SHOPPING);
+            }
         } else if ("TICKET_BOOKED".equals(event.getType())) {
             nexus.media.CinemaBooking b = (nexus.media.CinemaBooking) event.getPayload();
-            addTransaction("Cinema Ticket: " + b.getMovieTitle() + " (" + b.getSeatsFormatted() + ")", b.getFinalTotal(), TransactionCategory.ENTERTAINMENT);
+            synchronized (this) {
+                addTransaction("Cinema Ticket: " + b.getMovieTitle() + " (" + b.getSeatsFormatted() + ")", b.getFinalTotal(), TransactionCategory.ENTERTAINMENT);
+            }
         } else if ("GOAL_COMPLETED".equals(event.getType())) {
             nexus.goals.Goal goal = (nexus.goals.Goal) event.getPayload();
             addFunds("Goal Reward: " + goal.getTitle(), 150.0, TransactionCategory.SALARY_INCOME);
@@ -91,29 +148,34 @@ public class FinanceService implements NexusListener, IFinanceEngine {
         }
     }
     
-    public void resetBudget(double newTotalAmount) {
+    public synchronized void resetBudget(double newTotalAmount) {
         this.budget = new Budget(newTotalAmount);
         EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
     }
 
-    public void setBudgetCap(double newTotalAmount) {
+    public synchronized void setBudgetCap(double newTotalAmount) {
         this.budget.setTotalBudget(newTotalAmount);
         EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
     }
     
     public Budget getBudget() { return budget; }
-    public List<Transaction> getTransactions() { return transactions; }
-    public List<CryptoPrice> getCryptoPrices() { return cryptoPrices; }
+    public List<Transaction> getTransactions() { return new ArrayList<>(transactions); }
+    public List<CryptoPrice> getCryptoPrices() { return new ArrayList<>(cryptoPrices); }
     
-    public void setTransactions(List<Transaction> loadedTransactions) {
-        this.transactions = loadedTransactions;
+    public synchronized void setTransactions(List<Transaction> loadedTransactions) {
+        this.transactions.clear();
+        this.processedTransactionIds.clear();
         double spent = 0;
-        for (Transaction t : loadedTransactions) {
-            spent += t.getAmount();
+        if (loadedTransactions != null) {
+            for (Transaction t : loadedTransactions) {
+                this.transactions.add(t);
+                this.processedTransactionIds.add(t.getId());
+                spent += t.getAmount();
+            }
         }
         budget = new Budget(10000.0);
         budget.addExpense(spent);
-        EventBus.getInstance().publish(new NexusEvent("TRANSACTIONS_UPDATED", transactions, "Finance"));
+        EventBus.getInstance().publish(new NexusEvent("TRANSACTIONS_UPDATED", new ArrayList<>(transactions), "Finance"));
         EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
     }
 
@@ -129,7 +191,7 @@ public class FinanceService implements NexusListener, IFinanceEngine {
     }
 
     @Override
-    public void recordExpense(double amount, String categoryName, String description) throws nexus.common.exceptions.InsufficientFundsException {
+    public synchronized void recordExpense(double amount, String categoryName, String description) throws nexus.common.exceptions.InsufficientFundsException {
         if (budget != null && amount > budget.getRemaining()) {
             throw new nexus.common.exceptions.InsufficientFundsException(amount, budget.getRemaining());
         }
