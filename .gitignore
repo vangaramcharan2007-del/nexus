@@ -1,8 +1,23 @@
+# Build outputs and bytecode
+bin/
+*.class
+out/
+
+# Database files and SQLite locks
 nexus.db-shm
 nexus.db-wal
+*.db-shm
+*.db-wal
+nexus_v26_test.db
+nexus_v26_1_test.db
+*.test.db
+
+# Secrets and keys
 nexus_api.key
 *.key
+
+# Logs and temp files
 *.log
 sources.txt
-out/
 err.txt
+*.tmp
