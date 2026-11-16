@@ -72,9 +72,9 @@ public class MarketService implements NexusListener {
     }
     
     /**
-     * Executes checkout with atomic financial coordination.
+     * Executes checkout with atomic financial coordination and strict fail-closed security.
      * The cart is cleared ONLY after confirmed financial settlement.
-     * On failure or insufficient funds, the cart remains intact and CHECKOUT_FAILED is emitted.
+     * If the finance service is unavailable or rejected, the cart remains intact and CHECKOUT_FAILED is emitted.
      */
     public synchronized void checkout() {
         double total = cart.getTotal();
@@ -82,19 +82,33 @@ public class MarketService implements NexusListener {
             return;
         }
 
-        if (financeService != null) {
-            String txId = "MKT-" + IdGenerator.generateId();
-            String desc = String.format("Campus Store Order (%d items)", cart.getItems().size());
-            
-            // Atomic check and debit directly in FinanceService
-            PurchaseResult result = financeService.tryPurchase(total, desc, txId, TransactionCategory.SHOPPING);
+        // Fail-Closed Security: FinanceService must be present and approve the transaction
+        if (financeService == null) {
+            String errorMsg = "Checkout failed: Finance service is unavailable (fail-closed protection).";
+            System.err.println("[MarketService] " + errorMsg);
+            EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
+            return; // Cart is strictly preserved
+        }
 
-            if (!result.isSuccess()) {
-                String errorMsg = result.getMessage();
-                System.err.println("[MarketService] Checkout rejected: " + errorMsg);
-                EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
-                return; // Cart is NOT cleared; transaction rolled back
-            }
+        String txId = "MKT-" + IdGenerator.generateId();
+        String desc = String.format("Campus Store Order (%d items)", cart.getItems().size());
+        PurchaseResult result;
+
+        try {
+            // Atomic check and debit directly in FinanceService
+            result = financeService.tryPurchase(total, desc, txId, TransactionCategory.SHOPPING);
+        } catch (Throwable t) {
+            String errorMsg = "Checkout failed due to payment processing error: " + t.getMessage();
+            System.err.println("[MarketService] " + errorMsg);
+            EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
+            return; // Cart is strictly preserved
+        }
+
+        if (result == null || !result.isSuccess()) {
+            String errorMsg = (result != null && result.getMessage() != null) ? result.getMessage() : "Payment rejected by finance service.";
+            System.err.println("[MarketService] Checkout rejected: " + errorMsg);
+            EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
+            return; // Cart is NOT cleared; transaction rolled back
         }
 
         // Confirmed financial success: notify subsystems, clear cart
