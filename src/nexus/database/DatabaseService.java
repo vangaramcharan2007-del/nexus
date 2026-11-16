@@ -48,6 +48,13 @@ import nexus.media.MediaStatus;
  */
 public class DatabaseService implements NexusListener {
     private static String resolveDbPath() {
+        if ("true".equalsIgnoreCase(System.getProperty("nexus.testMode", "false"))) {
+            String testPath = System.getProperty("nexus.db.path");
+            if (testPath == null || "nexus.db".equals(testPath)) {
+                return "nexus_isolated_test.db";
+            }
+            return testPath;
+        }
         String defaultDb = System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db";
         return System.getProperty("nexus.db.path", defaultDb);
     }
@@ -79,6 +86,13 @@ public class DatabaseService implements NexusListener {
         return instance;
     }
 
+    public static synchronized void resetInstance() {
+        if (instance != null) {
+            instance.close();
+            instance = null;
+        }
+    }
+
     private Connection writeConnection;
     private final ExecutorService dbWriterQueue;
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -104,6 +118,17 @@ public class DatabaseService implements NexusListener {
 
     public boolean isClosed() {
         return closed.get();
+    }
+
+    public synchronized boolean isConnectionAvailable() {
+        if (closed.get() || writeConnection == null) {
+            return false;
+        }
+        try {
+            return !writeConnection.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     public int getFailedWriteCount() {
@@ -138,6 +163,9 @@ public class DatabaseService implements NexusListener {
 
         try {
             if (writeConnection != null && !writeConnection.isClosed()) {
+                try (Statement stmt = writeConnection.createStatement()) {
+                    stmt.execute("PRAGMA wal_checkpoint(TRUNCATE);");
+                } catch (SQLException ignored) {}
                 writeConnection.close();
             }
         } catch (SQLException e) {
@@ -315,6 +343,9 @@ public class DatabaseService implements NexusListener {
 
     public List<Task> loadTasks() {
         List<Task> tasks = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return tasks;
+        }
         String sql = "SELECT id, title, priority, completed, due_date, category FROM tasks";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -345,6 +376,9 @@ public class DatabaseService implements NexusListener {
     
     public List<Transaction> loadTransactions() {
         List<Transaction> transactions = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return transactions;
+        }
         String sql = "SELECT id, description, amount, date, category FROM transactions ORDER BY date DESC";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -389,6 +423,9 @@ public class DatabaseService implements NexusListener {
 
     public List<Goal> loadGoals() {
         List<Goal> goals = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return goals;
+        }
         String sql = "SELECT id, title, deadline, category FROM goals";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -409,6 +446,9 @@ public class DatabaseService implements NexusListener {
 
     private List<Milestone> loadMilestonesForGoal(String goalId) {
         List<Milestone> list = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return list;
+        }
         String sql = "SELECT id, description, completed FROM milestones WHERE goal_id = ?";
         try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
             pstmt.setString(1, goalId);
@@ -429,6 +469,9 @@ public class DatabaseService implements NexusListener {
 
     public List<MediaItem> loadMedia() {
         List<MediaItem> mediaList = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return mediaList;
+        }
         String sql = "SELECT id, title, type, status, rating, poster_url, genres, rating_score, summary, year FROM media_items";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -464,6 +507,9 @@ public class DatabaseService implements NexusListener {
 
     public List<CinemaBooking> loadBookings() {
         List<CinemaBooking> list = new ArrayList<>();
+        if (!isConnectionAvailable()) {
+            return list;
+        }
         String sql = "SELECT id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method FROM cinema_bookings ORDER BY booking_date DESC";
         try (Statement stmt = writeConnection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -516,6 +562,9 @@ public class DatabaseService implements NexusListener {
         try {
             dbWriterQueue.submit(() -> {
                 synchronized (this) {
+                    if (closed.get() || !isConnectionAvailable()) {
+                        return;
+                    }
                     try {
                         // TASK EVENTS
                         if ("TASK_ADDED".equals(type) && payload instanceof Task) {
