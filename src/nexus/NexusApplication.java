@@ -62,7 +62,7 @@ import nexus.auth.LoginPanel;
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - V26.1 Reliability & Integration Verification Edition");
+        setTitle("NEXUS Enterprise Platform - V26.1.1 Reliability Patch Edition");
         setSize(1320, 820);
         setMinimumSize(new Dimension(1150, 720));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
