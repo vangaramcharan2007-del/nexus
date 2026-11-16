@@ -10,12 +10,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * It provides a decoupled, publish-subscribe (Pub/Sub) communication mechanism 
  * across the entire application architecture.
  *
- * V26 Core Reliability Enhancements:
- * - Thread-safe subscriber collections using ConcurrentHashMap and CopyOnWriteArrayList.
- * - Strict deduplication preventing identical listeners from multiple registrations.
- * - Complete listener lifecycle management (unsubscribe and unsubscribeFromAll).
- * - Per-listener exception isolation ensuring one failing subscriber cannot halt dispatch.
- * - Diagnostic inspection and clean reset capabilities for test suites.
+ * V26.1 Hardened Enhancements:
+ * - Atomic deduplication using CopyOnWriteArrayList.addIfAbsent() preventing
+ *   race conditions during high-concurrency registrations.
+ * - Thread-safe listener lifecycle management (unsubscribe and unsubscribeFromAll).
+ * - Per-listener exception isolation that safely propagates JVM-level fatal errors
+ *   (VirtualMachineError, ThreadDeath) without crashing other healthy subscribers.
+ * - Diagnostic inspection and clean reset capabilities for test harnesses.
  */
 public class EventBus {
     // Singleton instance ensures we only have one event hub application-wide.
@@ -40,7 +41,7 @@ public class EventBus {
 
     /**
      * Subscribes a listener to a specific type of event.
-     * Duplicate registrations of the same listener for the same event type are ignored.
+     * Guaranteed atomic deduplication via CopyOnWriteArrayList.addIfAbsent().
      * 
      * @param eventType The string identifier of the event (e.g., "TASK_ADDED").
      * @param listener The component that wants to be notified.
@@ -50,15 +51,12 @@ public class EventBus {
             return;
         }
         CopyOnWriteArrayList<NexusListener> list = listeners.computeIfAbsent(eventType, k -> new CopyOnWriteArrayList<>());
-        // Prevent duplicate subscriptions
-        if (!list.contains(listener)) {
-            list.add(listener);
-        }
+        list.addIfAbsent(listener);
     }
     
     /**
      * Subscribes a listener to all events flowing through the bus.
-     * Duplicate registrations are ignored.
+     * Guaranteed atomic deduplication via CopyOnWriteArrayList.addIfAbsent().
      * 
      * @param listener The component that wants to be notified of everything.
      */
@@ -66,9 +64,7 @@ public class EventBus {
         if (listener == null) {
             return;
         }
-        if (!globalListeners.contains(listener)) {
-            globalListeners.add(listener);
-        }
+        globalListeners.addIfAbsent(listener);
     }
 
     /**
@@ -83,10 +79,7 @@ public class EventBus {
             return false;
         }
         List<NexusListener> list = listeners.get(eventType);
-        if (list != null) {
-            return list.remove(listener);
-        }
-        return false;
+        return list != null && list.remove(listener);
     }
 
     /**
@@ -106,7 +99,8 @@ public class EventBus {
 
     /**
      * Publishes an event to the bus, distributing it to all interested listeners.
-     * Ensures strict exception isolation so a throwing listener does not affect others.
+     * Ensures strict exception isolation for application errors while allowing
+     * fatal JVM errors (VirtualMachineError, ThreadDeath) to propagate correctly.
      * 
      * @param event The event payload containing type and associated data.
      */
@@ -121,6 +115,8 @@ public class EventBus {
             for (NexusListener listener : eventListeners) {
                 try {
                     listener.onEvent(event);
+                } catch (VirtualMachineError fatal) {
+                    throw fatal; // Do not swallow fatal JVM errors
                 } catch (Throwable t) {
                     System.err.println("[EventBus] Isolated exception in listener (" + 
                         listener.getClass().getSimpleName() + ") for event " + event.getType() + ": " + t.getMessage());
@@ -132,11 +128,22 @@ public class EventBus {
         for (NexusListener listener : globalListeners) {
             try {
                 listener.onEvent(event);
+            } catch (VirtualMachineError fatal) {
+                throw fatal; // Do not swallow fatal JVM errors
             } catch (Throwable t) {
                 System.err.println("[EventBus] Isolated exception in global listener (" + 
                     listener.getClass().getSimpleName() + ") for event " + event.getType() + ": " + t.getMessage());
             }
         }
+    }
+
+    /**
+     * Checks if a listener is registered for a specific event type.
+     */
+    public boolean isSubscribed(String eventType, NexusListener listener) {
+        if (eventType == null || listener == null) return false;
+        List<NexusListener> list = listeners.get(eventType);
+        return list != null && list.contains(listener);
     }
 
     /**
