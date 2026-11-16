@@ -19,15 +19,14 @@ import nexus.integrations.common.IntegrationLogger;
 import nexus.integrations.common.IntegrationStatus;
 
 /**
- * Metabase Self-Hosted Analytics Integration Service for NEXUS V26.
+ * Metabase Monitoring & Local Analytics Export Service for NEXUS V26.1.
  *
- * Requirements:
- * - Support self-hosted Metabase instances.
- * - Enforces strictly read-only access to prevent mutation of business data.
- * - Models the 5 mandatory dashboards (Financial overview, Monthly spending, 
- *   Task trends, Goal progression, Productivity overview).
- * - Distinguishes verified real metrics from simulated projections.
- * - Optionality: If Metabase is unavailable or offline, NEXUS operates normally without disruption.
+ * Honest Architectural Boundary:
+ * - Monitors availability of external self-hosted Metabase instances via /api/health.
+ * - Provides read-only data specifications and models for Metabase database connectors.
+ * - Executes analytics queries strictly through ReadOnlyAnalyticsStore (PRAGMA query_only = ON).
+ * - Distinguishes local NEXUS SQLite metrics from external Metabase dashboards.
+ * - Complete local-first autonomy: NEXUS operates 100% normally if Metabase is offline.
  */
 public class MetabaseAnalyticsService implements IIntegrationService {
     private final MetabaseConfig config;
@@ -35,6 +34,7 @@ public class MetabaseAnalyticsService implements IIntegrationService {
     private final HttpClient httpClient;
     private final List<AnalyticsDashboardModel> dashboards;
     private volatile IntegrationStatus currentStatus = IntegrationStatus.UNAVAILABLE;
+    private volatile boolean authenticatedSession = false;
 
     public MetabaseAnalyticsService() {
         this(new MetabaseConfig(), new ReadOnlyAnalyticsStore(), HttpHelper.getDefaultClient());
@@ -68,6 +68,10 @@ public class MetabaseAnalyticsService implements IIntegrationService {
         return config.isEnabled();
     }
 
+    public boolean isAuthenticatedSession() {
+        return authenticatedSession;
+    }
+
     public MetabaseConfig getConfig() {
         return config;
     }
@@ -82,7 +86,7 @@ public class MetabaseAnalyticsService implements IIntegrationService {
 
     /**
      * Checks health against self-hosted Metabase health endpoint (/api/health).
-     * Guarantees zero unhandled exceptions on network timeout or connection refused.
+     * Does not claim external database synchronization or data retrieval if only health is detected.
      */
     @Override
     public boolean checkHealth() {
@@ -104,7 +108,7 @@ public class MetabaseAnalyticsService implements IIntegrationService {
 
             if (resp.statusCode() == 200) {
                 currentStatus = IntegrationStatus.HEALTHY;
-                IntegrationLogger.log("metabase", "HEALTH_CHECK", true, "HTTP 200 OK", latency);
+                IntegrationLogger.log("metabase", "HEALTH_CHECK", true, "HTTP 200 OK (Server online)", latency);
                 return true;
             } else {
                 currentStatus = IntegrationStatus.DEGRADED;
@@ -121,7 +125,7 @@ public class MetabaseAnalyticsService implements IIntegrationService {
     }
 
     /**
-     * Generates the web navigation URL for a given dashboard ID.
+     * Generates navigation URL for a dashboard specification.
      */
     public String getDashboardUrl(int dashboardId) {
         AnalyticsDashboardModel model = dashboards.stream()
@@ -133,8 +137,8 @@ public class MetabaseAnalyticsService implements IIntegrationService {
     }
 
     /**
-     * Safely executes a read-only analytics query against the read-only SQLite connection.
-     * Guarantees that write operations are rejected and cannot modify business data.
+     * Safely executes an allowlisted read-only analytics query.
+     * Enforces dual-layer security: application validation and SQLite PRAGMA query_only = ON.
      */
     public List<Map<String, Object>> executeReadOnlyQuery(String sql) throws Exception {
         if (!ReadOnlyAnalyticsStore.isReadOnlyQuery(sql)) {
@@ -158,8 +162,20 @@ public class MetabaseAnalyticsService implements IIntegrationService {
         return results;
     }
 
+    /**
+     * Returns documented setup instructions for configuring an external Metabase instance.
+     */
+    public static String getSetupInstructions() {
+        return "To connect an external Metabase instance to NEXUS:\n" +
+               "1. Run Metabase with SQLite driver support:\n" +
+               "   docker run -d -p 3000:3000 -v /path/to/nexus.db:/data/nexus.db:ro --name metabase metabase/metabase\n" +
+               "2. In Metabase Admin > Databases > Add Database, select 'SQLite'.\n" +
+               "3. Configure filename as '/data/nexus.db' in Read-Only mode.\n" +
+               "4. Import the 5 pre-defined SQL models from AnalyticsDashboardModel into Metabase Cards.";
+    }
+
     @Override
     public void shutdown() {
-        // Metabase is external service; no background daemon threads to drain
+        // No background thread pools to terminate
     }
 }

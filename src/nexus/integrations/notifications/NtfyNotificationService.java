@@ -26,14 +26,14 @@ import nexus.media.CinemaBooking;
 import nexus.tasks.Task;
 
 /**
- * Ntfy Push Notification Integration Service for NEXUS V26.
+ * Ntfy Push Notification Integration Service for NEXUS V26.1.
  *
- * Requirements:
- * - Native Java HttpClient integration (standard library).
- * - Asynchronous non-blocking delivery (outside Swing EDT).
- * - Retry with exponential backoff on failure.
- * - Thread-safe notification history and preference filtering.
- * - Non-fatal fault tolerance: failures never crash NEXUS.
+ * Security & Verification Principles:
+ * - Emits clear warnings when running on public unauthenticated endpoints.
+ * - Non-blocking asynchronous delivery outside the Swing EDT.
+ * - Retry with exponential backoff on transient network faults.
+ * - Transparent delivery tracking: deliveredCount increments only upon HTTP 2xx response.
+ * - Server health checks accurately represent gateway reachability, not handset delivery.
  */
 public class NtfyNotificationService implements NexusListener, IIntegrationService {
     
@@ -91,6 +91,10 @@ public class NtfyNotificationService implements NexusListener, IIntegrationServi
             return t;
         });
 
+        if (this.config.isPublicServerWithoutAuth()) {
+            System.err.println(this.config.getSecurityWarning());
+        }
+
         if (this.config.isEnabled()) {
             registerSubscriptions();
         } else {
@@ -145,6 +149,11 @@ public class NtfyNotificationService implements NexusListener, IIntegrationServi
         return lastDeliveryTimestamp;
     }
 
+    /**
+     * Probes the ntfy server endpoint to verify gateway reachability.
+     * Note: A successful health probe verifies HTTP connectivity to the ntfy server;
+     * it does not constitute proof of delivery to an end-user mobile handset.
+     */
     @Override
     public boolean checkHealth() {
         if (!config.isEnabled()) {
@@ -215,7 +224,7 @@ public class NtfyNotificationService implements NexusListener, IIntegrationServi
     }
 
     /**
-     * Dispatches notification asynchronously on the background thread pool.
+     * Dispatches notification asynchronously on the background daemon thread pool.
      */
     public void sendNotificationAsync(NotificationPayload payload) {
         if (dispatchQueue.isShutdown()) return;

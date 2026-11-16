@@ -13,14 +13,16 @@ import nexus.integrations.notifications.NotificationPayload;
 import nexus.integrations.notifications.NtfyNotificationService;
 
 /**
- * Visual control center for NEXUS V26 External Integrations (ntfy & Metabase).
- * Displays real-time operational health, connection telemetry, and dashboard links.
+ * Visual control center for NEXUS V26.1 External Integrations (ntfy & Metabase).
+ * Displays real-time operational health, connection telemetry, public topic security alerts,
+ * and transparent separation between local analytics and external BI platforms.
  */
 public class IntegrationsPanel extends JPanel {
     private final NtfyNotificationService ntfyService;
     private final MetabaseAnalyticsService metabaseService;
 
     private JLabel ntfyStatusLabel;
+    private JLabel ntfySecurityWarningLabel;
     private JLabel metabaseStatusLabel;
     private JLabel ntfyMetricsLabel;
     private JTextArea auditLogArea;
@@ -40,7 +42,7 @@ public class IntegrationsPanel extends JPanel {
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 22));
         titleLabel.setForeground(new Color(240, 243, 246));
 
-        JLabel subLabel = new JLabel("V26 Enterprise Service Bus: ntfy Push Notifications & Self-Hosted Metabase Analytics");
+        JLabel subLabel = new JLabel("V26.1 Enterprise Service Bus: ntfy Push Notifications & Optional Metabase Analytics Layer");
         subLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         subLabel.setForeground(new Color(139, 148, 158));
 
@@ -58,7 +60,7 @@ public class IntegrationsPanel extends JPanel {
         // Bottom Section: Audit Log & Diagnostics
         JPanel bottomPanel = new JPanel(new BorderLayout(10, 10));
         bottomPanel.setOpaque(false);
-        JLabel auditTitle = new JLabel("Integration Telemetry & Event Stream");
+        JLabel auditTitle = new JLabel("Integration Telemetry & Event Stream (Verified Responses)");
         auditTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
         auditTitle.setForeground(new Color(201, 209, 217));
 
@@ -106,7 +108,7 @@ public class IntegrationsPanel extends JPanel {
 
         String server = ntfyService != null ? ntfyService.getConfig().getServerUrl() : "https://ntfy.sh";
         String topic = ntfyService != null ? ntfyService.getConfig().getTopic() : "nexus-alerts";
-        JLabel endpointLabel = new JLabel("Endpoint: " + server + "/" + topic);
+        JLabel endpointLabel = new JLabel("Target Endpoint: " + server + "/" + topic);
         endpointLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         endpointLabel.setForeground(new Color(139, 148, 158));
         card.add(endpointLabel);
@@ -116,16 +118,22 @@ public class IntegrationsPanel extends JPanel {
         ntfyMetricsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         ntfyMetricsLabel.setForeground(new Color(139, 148, 158));
         card.add(ntfyMetricsLabel);
-        card.add(Box.createVerticalStrut(15));
+        card.add(Box.createVerticalStrut(6));
 
-        JButton sendTestBtn = new JButton("⚡ Dispatch Test Notification");
+        ntfySecurityWarningLabel = new JLabel("");
+        ntfySecurityWarningLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        ntfySecurityWarningLabel.setForeground(new Color(227, 179, 65));
+        card.add(ntfySecurityWarningLabel);
+        card.add(Box.createVerticalStrut(12));
+
+        JButton sendTestBtn = new JButton("⚡ Dispatch Manual Test Notification");
         sendTestBtn.setBackground(new Color(35, 134, 54));
         sendTestBtn.setForeground(Color.WHITE);
         sendTestBtn.setFocusPainted(false);
         sendTestBtn.addActionListener(e -> {
             if (ntfyService != null) {
                 NotificationPayload p = new NotificationPayload(
-                        "NEXUS V26 Telemetry Ping",
+                        "NEXUS V26.1 Telemetry Ping",
                         "Manual diagnostic test notification from NEXUS Enterprise Console.",
                         3,
                         java.util.Arrays.asList("satellite", "bell")
@@ -150,7 +158,7 @@ public class IntegrationsPanel extends JPanel {
                 new EmptyBorder(15, 18, 15, 18)
         ));
 
-        JLabel title = new JLabel("📊 Metabase Self-Hosted Analytics");
+        JLabel title = new JLabel("📊 Metabase Optional Analytics Layer");
         title.setFont(new Font("Segoe UI", Font.BOLD, 16));
         title.setForeground(new Color(240, 243, 246));
         card.add(title);
@@ -162,7 +170,7 @@ public class IntegrationsPanel extends JPanel {
         card.add(Box.createVerticalStrut(6));
 
         String url = metabaseService != null ? metabaseService.getConfig().getBaseUrl() : "http://localhost:3000";
-        JLabel urlLabel = new JLabel("Base URL: " + url + " (Read-Only Mode)");
+        JLabel urlLabel = new JLabel("Base URL: " + url);
         urlLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         urlLabel.setForeground(new Color(139, 148, 158));
         card.add(urlLabel);
@@ -174,7 +182,7 @@ public class IntegrationsPanel extends JPanel {
         card.add(roBadge);
         card.add(Box.createVerticalStrut(10));
 
-        JLabel dashTitle = new JLabel("Configured Dashboards:");
+        JLabel dashTitle = new JLabel("Analytics Specifications (NEXUS Local Analytics):");
         dashTitle.setFont(new Font("Segoe UI", Font.BOLD, 12));
         dashTitle.setForeground(new Color(201, 209, 217));
         card.add(dashTitle);
@@ -182,14 +190,16 @@ public class IntegrationsPanel extends JPanel {
 
         if (metabaseService != null) {
             for (AnalyticsDashboardModel dm : metabaseService.getDashboards()) {
-                JLabel dLabel = new JLabel("• " + dm.getName() + " (" + dm.getCategory() + " - " + 
-                        (dm.isRealMetric() ? "Real Data" : "Simulated") + ")");
+                JLabel dLabel = new JLabel("• " + dm.getName() + " (" + dm.getCategory() + ")");
                 dLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
                 dLabel.setForeground(new Color(139, 148, 158));
                 card.add(dLabel);
             }
         }
         card.add(Box.createVerticalStrut(10));
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        btnRow.setOpaque(false);
 
         JButton checkBtn = new JButton("🔄 Re-Check Health");
         checkBtn.setBackground(new Color(31, 111, 235));
@@ -202,7 +212,21 @@ public class IntegrationsPanel extends JPanel {
                 SwingUtilities.invokeLater(this::refreshState);
             }).start();
         });
-        card.add(checkBtn);
+        btnRow.add(checkBtn);
+
+        JButton infoBtn = new JButton("ℹ️ Setup Guide");
+        infoBtn.setBackground(new Color(48, 54, 61));
+        infoBtn.setForeground(Color.WHITE);
+        infoBtn.setFocusPainted(false);
+        infoBtn.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this, 
+                MetabaseAnalyticsService.getSetupInstructions(), 
+                "Metabase External Setup Guide", 
+                JOptionPane.INFORMATION_MESSAGE);
+        });
+        btnRow.add(infoBtn);
+
+        card.add(btnRow);
 
         return card;
     }
@@ -210,16 +234,31 @@ public class IntegrationsPanel extends JPanel {
     public void refreshState() {
         if (ntfyService != null) {
             IntegrationStatus s = ntfyService.getStatus();
-            ntfyStatusLabel.setText("Status: " + s.getDescription());
+            ntfyStatusLabel.setText("Gateway Reachability: " + s.getDescription());
             ntfyStatusLabel.setForeground(s.isOperational() ? new Color(63, 185, 80) : new Color(248, 81, 73));
-            ntfyMetricsLabel.setText(String.format("Delivered: %d | Failed: %d | Retries Configured: %d",
-                    ntfyService.getDeliveredCount(), ntfyService.getFailedCount(), ntfyService.getConfig().getMaxRetries()));
+            ntfyMetricsLabel.setText(String.format("Delivered: %d (HTTP 2xx Verified) | Failed: %d",
+                    ntfyService.getDeliveredCount(), ntfyService.getFailedCount()));
+
+            if (ntfyService.getConfig().isPublicServerWithoutAuth()) {
+                ntfySecurityWarningLabel.setText("<html>⚠️ <b>Security Notice:</b> Public topic in use without auth. Configure private topic for security.</html>");
+            } else {
+                ntfySecurityWarningLabel.setText("🔒 Private / Authenticated Channel Active.");
+                ntfySecurityWarningLabel.setForeground(new Color(63, 185, 80));
+            }
         }
 
         if (metabaseService != null) {
             IntegrationStatus s = metabaseService.getStatus();
-            metabaseStatusLabel.setText("Status: " + s.getDescription() + (s == IntegrationStatus.UNAVAILABLE ? " (Local Fallback Active)" : ""));
-            metabaseStatusLabel.setForeground(s.isOperational() ? new Color(63, 185, 80) : new Color(248, 81, 73));
+            if (s == IntegrationStatus.HEALTHY) {
+                metabaseStatusLabel.setText("Status: Server Reachable (Optional BI Monitoring)");
+                metabaseStatusLabel.setForeground(new Color(63, 185, 80));
+            } else if (s == IntegrationStatus.DISABLED) {
+                metabaseStatusLabel.setText("Status: Disabled by Configuration");
+                metabaseStatusLabel.setForeground(new Color(139, 148, 158));
+            } else {
+                metabaseStatusLabel.setText("Status: Offline / Not Connected (NEXUS Local Analytics Active)");
+                metabaseStatusLabel.setForeground(new Color(227, 179, 65));
+            }
         }
 
         // Refresh audit log
