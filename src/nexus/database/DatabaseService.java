@@ -15,7 +15,10 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import nexus.common.EventBus;
 import nexus.common.NexusEvent;
@@ -32,20 +35,30 @@ import nexus.media.MediaType;
 import nexus.media.MediaStatus;
 
 /**
- * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V26.
+ * Enterprise-grade asynchronous SQLite persistence layer for NEXUS V26.1.
  * Persists Tasks, Transactions, Goals, Milestones, Media Items, Cinema Bookings, and Market Purchases.
  *
- * V26 Core Reliability Enhancements:
- * - Pre-filtering: Irrelevant/ephemeral events are rejected before queue submission.
- * - Transaction Safety: Multi-statement updates execute atomically with rollback on failure.
- * - Graceful Shutdown: Thread pool draining with awaitTermination before connection closure.
- * - Read-Only Connection Support: Controlled read-only connection access for external analytics.
- * - Flusher API: awaitDrained() provides synchronous barriers for testing and mission-critical writes.
+ * V26.1 Lifecycle & Reliability Hardening:
+ * - Pre-filtering: non-persistable events rejected prior to queue submission.
+ * - Idempotent shutdown: safe against repeated close() calls, cleanly resets singleton.
+ * - Accurate draining: awaitDrained() correctly reports queue completion even during shutdown.
+ * - Connection safety: writeConnection is never closed while worker tasks are executing.
+ * - Visible error tracking: failed database writes are tracked and observable via failedWriteCount.
+ * - Controlled read-only access: getReadOnlyConnection() enforces PRAGMA query_only = ON.
  */
 public class DatabaseService implements NexusListener {
-    private static final String DEFAULT_DB = System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db";
-    private static final String DB_PATH = System.getProperty("nexus.db.path", DEFAULT_DB);
-    private static final String URL = "jdbc:sqlite:" + DB_PATH;
+    private static String resolveDbPath() {
+        String defaultDb = System.getProperty("nexus.mockBackend", "false").equals("true") ? ":memory:" : "nexus.db";
+        return System.getProperty("nexus.db.path", defaultDb);
+    }
+
+    public static String getDatabasePath() {
+        return resolveDbPath();
+    }
+
+    private static String getDbUrl() {
+        return "jdbc:sqlite:" + resolveDbPath();
+    }
     
     // Explicit whitelist of events that require database persistence
     private static final Set<String> PERSISTABLE_EVENTS = new HashSet<>(Arrays.asList(
@@ -60,7 +73,7 @@ public class DatabaseService implements NexusListener {
     private static DatabaseService instance;
 
     public static synchronized DatabaseService getInstance() {
-        if (instance == null) {
+        if (instance == null || instance.isClosed()) {
             instance = new DatabaseService();
         }
         return instance;
@@ -68,10 +81,13 @@ public class DatabaseService implements NexusListener {
 
     private Connection writeConnection;
     private final ExecutorService dbWriterQueue;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicInteger failedWriteCount = new AtomicInteger(0);
+    private volatile String lastWriteError = null;
 
     public DatabaseService() {
         synchronized (DatabaseService.class) {
-            if (instance == null) {
+            if (instance == null || instance.isClosed()) {
                 instance = this;
             }
         }
@@ -86,10 +102,28 @@ public class DatabaseService implements NexusListener {
         Runtime.getRuntime().addShutdownHook(new Thread(this::close));
     }
 
+    public boolean isClosed() {
+        return closed.get();
+    }
+
+    public int getFailedWriteCount() {
+        return failedWriteCount.get();
+    }
+
+    public String getLastWriteError() {
+        return lastWriteError;
+    }
+
     /**
      * Gracefully flushes remaining pending writes and closes database connections.
+     * Guaranteed to be idempotent and safe against repeated calls.
      */
-    public void close() {
+    public synchronized void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return; // Already closed
+        }
+        EventBus.getInstance().unsubscribeFromAll(this);
+
         if (dbWriterQueue != null && !dbWriterQueue.isShutdown()) {
             dbWriterQueue.shutdown();
             try {
@@ -101,29 +135,45 @@ public class DatabaseService implements NexusListener {
                 Thread.currentThread().interrupt();
             }
         }
-        synchronized (this) {
-            try {
-                if (writeConnection != null && !writeConnection.isClosed()) {
-                    writeConnection.close();
-                }
-            } catch (SQLException e) {
-                System.err.println("[DatabaseService] Error closing writeConnection: " + e.getMessage());
+
+        try {
+            if (writeConnection != null && !writeConnection.isClosed()) {
+                writeConnection.close();
+            }
+        } catch (SQLException e) {
+            System.err.println("[DatabaseService] Error closing writeConnection: " + e.getMessage());
+        }
+
+        // Reset singleton reference so future getInstance() calls create an active instance
+        synchronized (DatabaseService.class) {
+            if (instance == this) {
+                instance = null;
             }
         }
     }
 
     /**
      * Synchronously waits until all currently queued database writes have completed.
-     * Essential for deterministic test assertions.
+     * Accurately reports completion across active, shutting down, and terminated states.
      */
     public boolean awaitDrained(long timeoutMs) {
-        if (dbWriterQueue == null || dbWriterQueue.isShutdown()) {
+        if (closed.get() || dbWriterQueue == null || dbWriterQueue.isTerminated()) {
             return true;
         }
+        if (dbWriterQueue.isShutdown()) {
+            try {
+                return dbWriterQueue.awaitTermination(timeoutMs, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
         CountDownLatch latch = new CountDownLatch(1);
-        dbWriterQueue.submit(latch::countDown);
         try {
+            dbWriterQueue.submit(latch::countDown);
             return latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException ree) {
+            return dbWriterQueue.isTerminated();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
@@ -139,7 +189,7 @@ public class DatabaseService implements NexusListener {
 
     /**
      * Returns a read-only JDBC connection to the database.
-     * Guarantees external services cannot mutate NEXUS tables.
+     * Guarantees external services cannot mutate NEXUS tables via SQLite PRAGMA query_only = ON.
      */
     public Connection getReadOnlyConnection() throws SQLException {
         try {
@@ -150,15 +200,11 @@ public class DatabaseService implements NexusListener {
         org.sqlite.SQLiteConfig config = new org.sqlite.SQLiteConfig();
         config.setReadOnly(true);
         config.setBusyTimeout(10000);
-        Connection conn = config.createConnection(URL);
+        Connection conn = config.createConnection(getDbUrl());
         try (Statement s = conn.createStatement()) {
             s.execute("PRAGMA query_only = ON;");
         }
         return conn;
-    }
-
-    public static String getDatabasePath() {
-        return DB_PATH;
     }
 
     private void initDatabase() {
@@ -168,7 +214,7 @@ public class DatabaseService implements NexusListener {
             config.setBusyTimeout(10000);
             config.setJournalMode(org.sqlite.SQLiteConfig.JournalMode.WAL);
             config.setSynchronous(org.sqlite.SQLiteConfig.SynchronousMode.NORMAL);
-            writeConnection = config.createConnection(URL);
+            writeConnection = config.createConnection(getDbUrl());
             
             try (Statement stmt = writeConnection.createStatement()) {
                 // Enable Write-Ahead Logging & Busy Timeout to eliminate database locks
@@ -455,7 +501,7 @@ public class DatabaseService implements NexusListener {
 
     @Override
     public void onEvent(NexusEvent event) {
-        if (event == null || dbWriterQueue == null || dbWriterQueue.isShutdown()) {
+        if (event == null || closed.get() || dbWriterQueue == null || dbWriterQueue.isShutdown()) {
             return;
         }
         
@@ -467,173 +513,180 @@ public class DatabaseService implements NexusListener {
 
         Object payload = event.getPayload();
         
-        dbWriterQueue.submit(() -> {
-            synchronized (this) {
-                try {
-                    // TASK EVENTS
-                    if ("TASK_ADDED".equals(type) && payload instanceof Task) {
-                        Task t = (Task) payload;
-                        String sql = "INSERT OR REPLACE INTO tasks(id, title, priority, completed, due_date, category) VALUES(?, ?, ?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, t.getId());
-                            pstmt.setString(2, t.getTitle());
-                            pstmt.setString(3, t.getPriority().name());
-                            pstmt.setInt(4, t.isCompleted() ? 1 : 0);
-                            pstmt.setString(5, t.getDueDate());
-                            pstmt.setString(6, t.getCategory());
-                            pstmt.executeUpdate();
-                        }
-                    } else if ("TASK_COMPLETED".equals(type) && payload instanceof Task) {
-                        Task t = (Task) payload;
-                        String sql = "UPDATE tasks SET completed = 1 WHERE id = ?";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, t.getId());
-                            pstmt.executeUpdate();
-                        }
-                    } else if ("TASK_DELETED".equals(type) && payload instanceof Task) {
-                        Task t = (Task) payload;
-                        String sql = "DELETE FROM tasks WHERE id = ?";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, t.getId());
-                            pstmt.executeUpdate();
-                        }
-                    } 
-                    // TRANSACTION EVENTS
-                    else if ("TRANSACTION_ADDED".equals(type) && payload instanceof Transaction) {
-                        Transaction t = (Transaction) payload;
-                        String sql = "INSERT OR REPLACE INTO transactions(id, description, amount, date, category) VALUES(?, ?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, t.getId());
-                            pstmt.setString(2, t.getDescription());
-                            pstmt.setDouble(3, t.getAmount());
-                            pstmt.setLong(4, t.getDate().getTime());
-                            pstmt.setString(5, t.getCategory() != null ? t.getCategory().name() : "OTHER");
-                            pstmt.executeUpdate();
-                        }
-                    }
-                    // CINEMA BOOKING EVENTS
-                    else if ("TICKET_BOOKED".equals(type) && payload instanceof CinemaBooking) {
-                        CinemaBooking b = (CinemaBooking) payload;
-                        String sql = "INSERT OR REPLACE INTO cinema_bookings(id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, b.getId());
-                            pstmt.setString(2, b.getMovieTitle());
-                            pstmt.setString(3, b.getTheatre());
-                            pstmt.setString(4, b.getShowTime());
-                            pstmt.setString(5, b.getSeatsFormatted());
-                            pstmt.setDouble(6, b.getBasePrice());
-                            pstmt.setDouble(7, b.getDiscount());
-                            pstmt.setString(8, b.getPromoCode());
-                            pstmt.setDouble(9, b.getFinalTotal());
-                            pstmt.setLong(10, b.getBookingDate().getTime());
-                            pstmt.setString(11, b.getStatus());
-                            pstmt.setString(12, b.getPaymentMethod());
-                            pstmt.executeUpdate();
-                        }
-                    }
-                    // GOAL & MILESTONE EVENTS (TRANSACTION PROTECTED)
-                    else if ("GOAL_ADDED".equals(type) && payload instanceof Goal) {
-                        Goal g = (Goal) payload;
-                        String sql = "INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, g.getId());
-                            pstmt.setString(2, g.getTitle());
-                            pstmt.setString(3, g.getDeadline());
-                            pstmt.setString(4, g.getCategory());
-                            pstmt.executeUpdate();
-                        }
-                    } else if ("GOAL_DELETED".equals(type) && payload instanceof Goal) {
-                        Goal g = (Goal) payload;
-                        boolean oldAutoCommit = writeConnection.getAutoCommit();
-                        try {
-                            writeConnection.setAutoCommit(false);
-                            try (PreparedStatement p1 = writeConnection.prepareStatement("DELETE FROM milestones WHERE goal_id = ?");
-                                 PreparedStatement p2 = writeConnection.prepareStatement("DELETE FROM goals WHERE id = ?")) {
-                                p1.setString(1, g.getId());
-                                p1.executeUpdate();
-                                p2.setString(1, g.getId());
-                                p2.executeUpdate();
+        try {
+            dbWriterQueue.submit(() -> {
+                synchronized (this) {
+                    try {
+                        // TASK EVENTS
+                        if ("TASK_ADDED".equals(type) && payload instanceof Task) {
+                            Task t = (Task) payload;
+                            String sql = "INSERT OR REPLACE INTO tasks(id, title, priority, completed, due_date, category) VALUES(?, ?, ?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, t.getId());
+                                pstmt.setString(2, t.getTitle());
+                                pstmt.setString(3, t.getPriority().name());
+                                pstmt.setInt(4, t.isCompleted() ? 1 : 0);
+                                pstmt.setString(5, t.getDueDate());
+                                pstmt.setString(6, t.getCategory());
+                                pstmt.executeUpdate();
                             }
-                            writeConnection.commit();
-                        } catch (SQLException ex) {
-                            writeConnection.rollback();
-                            throw ex;
-                        } finally {
-                            writeConnection.setAutoCommit(oldAutoCommit);
+                        } else if ("TASK_COMPLETED".equals(type) && payload instanceof Task) {
+                            Task t = (Task) payload;
+                            String sql = "UPDATE tasks SET completed = 1 WHERE id = ?";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, t.getId());
+                                pstmt.executeUpdate();
+                            }
+                        } else if ("TASK_DELETED".equals(type) && payload instanceof Task) {
+                            Task t = (Task) payload;
+                            String sql = "DELETE FROM tasks WHERE id = ?";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, t.getId());
+                                pstmt.executeUpdate();
+                            }
+                        } 
+                        // TRANSACTION EVENTS
+                        else if ("TRANSACTION_ADDED".equals(type) && payload instanceof Transaction) {
+                            Transaction t = (Transaction) payload;
+                            String sql = "INSERT OR REPLACE INTO transactions(id, description, amount, date, category) VALUES(?, ?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, t.getId());
+                                pstmt.setString(2, t.getDescription());
+                                pstmt.setDouble(3, t.getAmount());
+                                pstmt.setLong(4, t.getDate().getTime());
+                                pstmt.setString(5, t.getCategory() != null ? t.getCategory().name() : "OTHER");
+                                pstmt.executeUpdate();
+                            }
                         }
-                    } else if ("GOALS_UPDATED".equals(type) && payload instanceof List) {
-                        @SuppressWarnings("unchecked")
-                        List<Goal> goals = (List<Goal>) payload;
-                        boolean oldAutoCommit = writeConnection.getAutoCommit();
-                        try {
-                            writeConnection.setAutoCommit(false);
-                            for (Goal g : goals) {
-                                try (PreparedStatement pGoal = writeConnection.prepareStatement("INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)")) {
-                                    pGoal.setString(1, g.getId());
-                                    pGoal.setString(2, g.getTitle());
-                                    pGoal.setString(3, g.getDeadline());
-                                    pGoal.setString(4, g.getCategory());
-                                    pGoal.executeUpdate();
+                        // CINEMA BOOKING EVENTS
+                        else if ("TICKET_BOOKED".equals(type) && payload instanceof CinemaBooking) {
+                            CinemaBooking b = (CinemaBooking) payload;
+                            String sql = "INSERT OR REPLACE INTO cinema_bookings(id, movie_title, theatre, showtime, seats, base_price, discount, promo_code, final_total, booking_date, status, payment_method) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, b.getId());
+                                pstmt.setString(2, b.getMovieTitle());
+                                pstmt.setString(3, b.getTheatre());
+                                pstmt.setString(4, b.getShowTime());
+                                pstmt.setString(5, b.getSeatsFormatted());
+                                pstmt.setDouble(6, b.getBasePrice());
+                                pstmt.setDouble(7, b.getDiscount());
+                                pstmt.setString(8, b.getPromoCode());
+                                pstmt.setDouble(9, b.getFinalTotal());
+                                pstmt.setLong(10, b.getBookingDate().getTime());
+                                pstmt.setString(11, b.getStatus());
+                                pstmt.setString(12, b.getPaymentMethod());
+                                pstmt.executeUpdate();
+                            }
+                        }
+                        // GOAL & MILESTONE EVENTS (TRANSACTION PROTECTED)
+                        else if ("GOAL_ADDED".equals(type) && payload instanceof Goal) {
+                            Goal g = (Goal) payload;
+                            String sql = "INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, g.getId());
+                                pstmt.setString(2, g.getTitle());
+                                pstmt.setString(3, g.getDeadline());
+                                pstmt.setString(4, g.getCategory());
+                                pstmt.executeUpdate();
+                            }
+                        } else if ("GOAL_DELETED".equals(type) && payload instanceof Goal) {
+                            Goal g = (Goal) payload;
+                            boolean oldAutoCommit = writeConnection.getAutoCommit();
+                            try {
+                                writeConnection.setAutoCommit(false);
+                                try (PreparedStatement p1 = writeConnection.prepareStatement("DELETE FROM milestones WHERE goal_id = ?");
+                                     PreparedStatement p2 = writeConnection.prepareStatement("DELETE FROM goals WHERE id = ?")) {
+                                    p1.setString(1, g.getId());
+                                    p1.executeUpdate();
+                                    p2.setString(2, g.getId());
+                                    p2.executeUpdate();
                                 }
-                                for (Milestone m : g.getMilestones()) {
-                                    try (PreparedStatement pMs = writeConnection.prepareStatement("INSERT OR REPLACE INTO milestones(id, goal_id, description, completed) VALUES(?, ?, ?, ?)")) {
-                                        pMs.setString(1, m.getId());
-                                        pMs.setString(2, g.getId());
-                                        pMs.setString(3, m.getDescription());
-                                        pMs.setInt(4, m.isCompleted() ? 1 : 0);
-                                        pMs.executeUpdate();
+                                writeConnection.commit();
+                            } catch (SQLException ex) {
+                                writeConnection.rollback();
+                                throw ex;
+                            } finally {
+                                writeConnection.setAutoCommit(oldAutoCommit);
+                            }
+                        } else if ("GOALS_UPDATED".equals(type) && payload instanceof List) {
+                            @SuppressWarnings("unchecked")
+                            List<Goal> goals = (List<Goal>) payload;
+                            boolean oldAutoCommit = writeConnection.getAutoCommit();
+                            try {
+                                writeConnection.setAutoCommit(false);
+                                for (Goal g : goals) {
+                                    try (PreparedStatement pGoal = writeConnection.prepareStatement("INSERT OR REPLACE INTO goals(id, title, deadline, category) VALUES(?, ?, ?, ?)")) {
+                                        pGoal.setString(1, g.getId());
+                                        pGoal.setString(2, g.getTitle());
+                                        pGoal.setString(3, g.getDeadline());
+                                        pGoal.setString(4, g.getCategory());
+                                        pGoal.executeUpdate();
+                                    }
+                                    for (Milestone m : g.getMilestones()) {
+                                        try (PreparedStatement pMs = writeConnection.prepareStatement("INSERT OR REPLACE INTO milestones(id, goal_id, description, completed) VALUES(?, ?, ?, ?)")) {
+                                            pMs.setString(1, m.getId());
+                                            pMs.setString(2, g.getId());
+                                            pMs.setString(3, m.getDescription());
+                                            pMs.setInt(4, m.isCompleted() ? 1 : 0);
+                                            pMs.executeUpdate();
+                                        }
                                     }
                                 }
+                                writeConnection.commit();
+                            } catch (SQLException ex) {
+                                writeConnection.rollback();
+                                throw ex;
+                            } finally {
+                                writeConnection.setAutoCommit(oldAutoCommit);
                             }
-                            writeConnection.commit();
-                        } catch (SQLException ex) {
-                            writeConnection.rollback();
-                            throw ex;
-                        } finally {
-                            writeConnection.setAutoCommit(oldAutoCommit);
                         }
+                        // MEDIA WATCHLIST EVENTS
+                        else if (("MEDIA_ADDED".equals(type) || "MEDIA_STATUS_CHANGED".equals(type) || "MEDIA_RATED".equals(type)) && payload instanceof MediaItem) {
+                            MediaItem item = (MediaItem) payload;
+                            String sql = "INSERT OR REPLACE INTO media_items(id, title, type, status, rating, poster_url, genres, rating_score, summary, year) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, item.getId());
+                                pstmt.setString(2, item.getTitle());
+                                pstmt.setString(3, item.getType().name());
+                                pstmt.setString(4, item.getStatus().name());
+                                pstmt.setInt(5, item.getRating());
+                                pstmt.setString(6, item.getPosterUrl());
+                                pstmt.setString(7, item.getGenres());
+                                pstmt.setDouble(8, item.getRatingScore());
+                                pstmt.setString(9, item.getSummary());
+                                pstmt.setString(10, item.getYear());
+                                pstmt.executeUpdate();
+                            }
+                        } else if ("MEDIA_DELETED".equals(type) && payload instanceof MediaItem) {
+                            MediaItem item = (MediaItem) payload;
+                            String sql = "DELETE FROM media_items WHERE id = ?";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, item.getId());
+                                pstmt.executeUpdate();
+                            }
+                        }
+                        // MARKET PURCHASES
+                        else if ("PRODUCT_PURCHASED".equals(type)) {
+                            double price = payload instanceof Double ? (Double) payload : 0.0;
+                            String sql = "INSERT INTO market_purchases(id, product_name, price, timestamp) VALUES(?, ?, ?, ?)";
+                            try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
+                                pstmt.setString(1, nexus.common.IdGenerator.generateId());
+                                pstmt.setString(2, "Market Order");
+                                pstmt.setDouble(3, price);
+                                pstmt.setLong(4, System.currentTimeMillis());
+                                pstmt.executeUpdate();
+                            }
+                        }
+                    } catch (SQLException e) {
+                        failedWriteCount.incrementAndGet();
+                        lastWriteError = e.getMessage();
+                        System.err.println("[DatabaseService] Async Write Error for " + type + ": " + e.getMessage());
+                        EventBus.getInstance().publish(new NexusEvent("DATABASE_WRITE_FAILED", type + ": " + e.getMessage(), "Database"));
                     }
-                    // MEDIA WATCHLIST EVENTS
-                    else if (("MEDIA_ADDED".equals(type) || "MEDIA_STATUS_CHANGED".equals(type) || "MEDIA_RATED".equals(type)) && payload instanceof MediaItem) {
-                        MediaItem item = (MediaItem) payload;
-                        String sql = "INSERT OR REPLACE INTO media_items(id, title, type, status, rating, poster_url, genres, rating_score, summary, year) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, item.getId());
-                            pstmt.setString(2, item.getTitle());
-                            pstmt.setString(3, item.getType().name());
-                            pstmt.setString(4, item.getStatus().name());
-                            pstmt.setInt(5, item.getRating());
-                            pstmt.setString(6, item.getPosterUrl());
-                            pstmt.setString(7, item.getGenres());
-                            pstmt.setDouble(8, item.getRatingScore());
-                            pstmt.setString(9, item.getSummary());
-                            pstmt.setString(10, item.getYear());
-                            pstmt.executeUpdate();
-                        }
-                    } else if ("MEDIA_DELETED".equals(type) && payload instanceof MediaItem) {
-                        MediaItem item = (MediaItem) payload;
-                        String sql = "DELETE FROM media_items WHERE id = ?";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, item.getId());
-                            pstmt.executeUpdate();
-                        }
-                    }
-                    // MARKET PURCHASES
-                    else if ("PRODUCT_PURCHASED".equals(type)) {
-                        double price = payload instanceof Double ? (Double) payload : 0.0;
-                        String sql = "INSERT INTO market_purchases(id, product_name, price, timestamp) VALUES(?, ?, ?, ?)";
-                        try (PreparedStatement pstmt = writeConnection.prepareStatement(sql)) {
-                            pstmt.setString(1, nexus.common.IdGenerator.generateId());
-                            pstmt.setString(2, "Market Order");
-                            pstmt.setDouble(3, price);
-                            pstmt.setLong(4, System.currentTimeMillis());
-                            pstmt.executeUpdate();
-                        }
-                    }
-                } catch (SQLException e) {
-                    System.err.println("[DatabaseService] Async Write Error for " + type + ": " + e.getMessage());
                 }
-            }
-        });
+            });
+        } catch (RejectedExecutionException ree) {
+            System.err.println("[DatabaseService] Write task rejected: queue already closed for " + type);
+        }
     }
 }
