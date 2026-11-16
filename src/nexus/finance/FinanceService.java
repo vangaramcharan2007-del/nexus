@@ -1,6 +1,7 @@
 package nexus.finance;
 
 import nexus.common.EventBus;
+import nexus.common.IdGenerator;
 import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
 
@@ -9,13 +10,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Enterprise-grade Financial Engine for NEXUS V26.
+ * Enterprise-grade Financial Engine for NEXUS V26.1.
  *
- * V26 Core Reliability Enhancements:
- * - Budget validation & affordability checks before debiting.
- * - Deduplication guard: Strictly prevents duplicate transaction recording.
- * - Atomic check-and-debit (debitIfAvailable) to guarantee transaction consistency.
- * - Rejection of unbacked purchases with transaction rollback notifications.
+ * V26.1 Concurrency & Integrity Hardening:
+ * - Coordinated atomic checkout via tryPurchase() eliminating race conditions between Market and Finance.
+ * - Strict parameter validation: rejects null, zero, negative, NaN, and infinite amounts.
+ * - Deduplication guard: strictly rejects duplicate transaction IDs and prevents double-debiting.
+ * - Atomic check-and-debit guarantees budget consistency and eliminates overdrafts.
  */
 public class FinanceService implements NexusListener, IFinanceEngine {
     private Budget budget;
@@ -50,19 +51,60 @@ public class FinanceService implements NexusListener, IFinanceEngine {
      * Checks if the remaining budget is sufficient for the requested amount.
      */
     public synchronized boolean canAfford(double amount) {
+        if (Double.isNaN(amount) || Double.isInfinite(amount) || amount <= 0.0) {
+            return false;
+        }
         return budget != null && budget.getRemaining() >= amount;
     }
 
     /**
+     * Atomically coordinates purchase evaluation and debiting within a single synchronized block.
+     * Prevents race conditions, enforces deduplication, and guarantees balance integrity.
+     */
+    public synchronized PurchaseResult tryPurchase(double amount, String description, String transactionId, TransactionCategory category) {
+        if (transactionId == null || transactionId.trim().isEmpty()) {
+            return PurchaseResult.failure("Invalid transaction ID: cannot be null or empty", getCurrentBalance());
+        }
+        if (Double.isNaN(amount) || Double.isInfinite(amount) || amount <= 0.0) {
+            return PurchaseResult.failure(String.format("Invalid transaction amount: %.2f (must be a positive finite number)", amount), getCurrentBalance());
+        }
+        if (processedTransactionIds.contains(transactionId)) {
+            return PurchaseResult.failure("Duplicate transaction rejected: ID " + transactionId + " already settled", getCurrentBalance());
+        }
+        if (!canAfford(amount)) {
+            return PurchaseResult.failure(String.format("Insufficient funds. Required: ₹%,.2f, Available: ₹%,.2f", amount, getCurrentBalance()), getCurrentBalance());
+        }
+
+        // Atomic debit and transaction creation
+        Transaction t = new Transaction(
+            transactionId, 
+            description != null ? description : "Market Purchase", 
+            amount, 
+            new Date(), 
+            category != null ? category : TransactionCategory.SHOPPING
+        );
+        processedTransactionIds.add(transactionId);
+        transactions.add(0, t);
+        budget.addExpense(amount);
+
+        // Publish events only after confirmed debit success
+        EventBus.getInstance().publish(new NexusEvent("TRANSACTION_ADDED", t, "Finance"));
+        EventBus.getInstance().publish(new NexusEvent("BUDGET_UPDATED", budget, "Finance"));
+
+        return PurchaseResult.success(getCurrentBalance(), t);
+    }
+
+    public synchronized PurchaseResult tryPurchase(double amount, String description, String transactionId) {
+        return tryPurchase(amount, description, transactionId, TransactionCategory.SHOPPING);
+    }
+
+    /**
      * Atomically debits the amount if funds are available.
-     * @return true if debited, false if insufficient funds.
+     * @return true if debited, false if insufficient funds or invalid amount.
      */
     public synchronized boolean debitIfAvailable(double amount, String description, TransactionCategory category) {
-        if (canAfford(amount)) {
-            addTransaction(description, amount, category);
-            return true;
-        }
-        return false;
+        PurchaseResult res = tryPurchase(amount, description, IdGenerator.generateId(), category);
+        return res.isSuccess();
     }
 
     public void addTransaction(String description, double amount) {
@@ -93,6 +135,9 @@ public class FinanceService implements NexusListener, IFinanceEngine {
     }
 
     public synchronized void addFunds(String description, double amount, TransactionCategory category) {
+        if (Double.isNaN(amount) || Double.isInfinite(amount) || amount <= 0.0) {
+            return;
+        }
         Transaction t = new Transaction(description, -amount, category);
         if (processedTransactionIds.contains(t.getId())) {
             return;
@@ -120,13 +165,14 @@ public class FinanceService implements NexusListener, IFinanceEngine {
         if (event == null) return;
         
         if ("PRODUCT_PURCHASED".equals(event.getType())) {
-            double price = (Double) event.getPayload();
-            synchronized (this) {
-                if (!canAfford(price)) {
-                    EventBus.getInstance().publish(new NexusEvent("TRANSACTION_REJECTED", "Insufficient budget for purchase: ₹" + price, "Finance"));
-                    return;
-                }
-                addTransaction("Market Purchase", price, TransactionCategory.SHOPPING);
+            // Market checkout coordinates through tryPurchase() directly to eliminate race conditions.
+            // If the event came from Market, it was already atomically debited.
+            if ("Market".equals(event.getSource()) || "MarketService".equals(event.getSource())) {
+                return;
+            }
+            if (event.getPayload() instanceof Double) {
+                double price = (Double) event.getPayload();
+                tryPurchase(price, "External Market Purchase", IdGenerator.generateId(), TransactionCategory.SHOPPING);
             }
         } else if ("TICKET_BOOKED".equals(event.getType())) {
             nexus.media.CinemaBooking b = (nexus.media.CinemaBooking) event.getPayload();

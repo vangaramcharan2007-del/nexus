@@ -1,20 +1,24 @@
 package nexus.market;
 
 import nexus.common.EventBus;
+import nexus.common.IdGenerator;
 import nexus.common.NexusEvent;
 import nexus.common.NexusListener;
 import nexus.finance.FinanceService;
+import nexus.finance.PurchaseResult;
+import nexus.finance.TransactionCategory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Campus Store Market Service for NEXUS V26.
+ * Campus Store Market Service for NEXUS V26.1.
  *
- * V26 Core Reliability Enhancements:
- * - Financial pre-validation during checkout against available budget.
- * - Prevents overdraft purchases exceeding budget cap.
- * - Rollback mechanism: Preserves cart and emits CHECKOUT_FAILED if funds are insufficient.
+ * V26.1 Concurrency & Financial Integrity Hardening:
+ * - Coordinates checkout atomically via FinanceService.tryPurchase() to eliminate race conditions.
+ * - Prevents overdraft purchases exceeding budget cap under concurrent conditions.
+ * - Rollback mechanism: Preserves cart and emits CHECKOUT_FAILED if funds are insufficient or transaction is rejected.
+ * - Clears cart ONLY after confirmed financial success.
  * - Preserves existing XP discount system (1,000 XP = 5%, 5,000 XP = 15%).
  */
 public class MarketService implements NexusListener {
@@ -68,24 +72,32 @@ public class MarketService implements NexusListener {
     }
     
     /**
-     * Executes checkout with financial integrity validation.
-     * If the purchase exceeds available funds, checkout is aborted and cart is retained.
+     * Executes checkout with atomic financial coordination.
+     * The cart is cleared ONLY after confirmed financial settlement.
+     * On failure or insufficient funds, the cart remains intact and CHECKOUT_FAILED is emitted.
      */
     public synchronized void checkout() {
         double total = cart.getTotal();
-        if (total <= 0) {
+        if (total <= 0.0 || cart.getItems().isEmpty()) {
             return;
         }
 
-        // Financial validation check
-        if (financeService != null && !financeService.canAfford(total)) {
-            String errorMsg = String.format("Checkout aborted: Insufficient budget. Required: ₹%,.2f, Available: ₹%,.2f",
-                    total, financeService.getCurrentBalance());
-            System.err.println("[MarketService] " + errorMsg);
-            EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
-            return; // Cart is NOT cleared; transaction rolled back
+        if (financeService != null) {
+            String txId = "MKT-" + IdGenerator.generateId();
+            String desc = String.format("Campus Store Order (%d items)", cart.getItems().size());
+            
+            // Atomic check and debit directly in FinanceService
+            PurchaseResult result = financeService.tryPurchase(total, desc, txId, TransactionCategory.SHOPPING);
+
+            if (!result.isSuccess()) {
+                String errorMsg = result.getMessage();
+                System.err.println("[MarketService] Checkout rejected: " + errorMsg);
+                EventBus.getInstance().publish(new NexusEvent("CHECKOUT_FAILED", errorMsg, "Market"));
+                return; // Cart is NOT cleared; transaction rolled back
+            }
         }
 
+        // Confirmed financial success: notify subsystems, clear cart
         EventBus.getInstance().publish(new NexusEvent("PRODUCT_PURCHASED", total, "Market"));
         for (CartItem item : cart.getItems()) {
             EventBus.getInstance().publish(new NexusEvent("ITEM_PURCHASED", item.getProduct(), "Market"));
