@@ -1,5 +1,6 @@
 # Build outputs and bytecode
 bin/
+build/
 *.class
 out/
 
