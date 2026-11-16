@@ -62,7 +62,7 @@ import nexus.auth.LoginPanel;
 public class NexusApplication extends JFrame {
     
     public NexusApplication() {
-        setTitle("NEXUS Enterprise Platform - V25.0 Review 3 Final Master Edition");
+        setTitle("NEXUS Enterprise Platform - V26.0 External Integration & Core Reliability Edition");
         setSize(1320, 820);
         setMinimumSize(new Dimension(1150, 720));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -78,21 +78,23 @@ public class NexusApplication extends JFrame {
         // Initialize Core Services
         DashboardService dashboardService = new DashboardService();
         FinanceService financeService = new FinanceService();
-        MarketService marketService = new MarketService();
+        MarketService marketService = new MarketService(financeService);
         TaskService taskService = new TaskService();
         GoalService goalService = new GoalService();
         MediaService mediaService = new MediaService();
         AnalyticsService analyticsService = new AnalyticsService();
         nexus.rules.RuleEngineService ruleEngineService = new nexus.rules.RuleEngineService();
+
+        // Initialize V26 External Integrations
+        nexus.integrations.notifications.NtfyNotificationService ntfyService = new nexus.integrations.notifications.NtfyNotificationService();
+        nexus.integrations.analytics.MetabaseAnalyticsService metabaseService = new nexus.integrations.analytics.MetabaseAnalyticsService();
         
         nexus.realtime.WindowsMediaHook mediaHook = new nexus.realtime.WindowsMediaHook();
         mediaHook.start();
         
         // Populate UI/Services with persistent SQLite DB data
         java.util.List<nexus.tasks.Task> loadedTasks = databaseService.loadTasks();
-        if (!loadedTasks.isEmpty()) {
-            taskService.setTasks(loadedTasks);
-        }
+        taskService.setTasks(loadedTasks);
         
         java.util.List<nexus.finance.Transaction> loadedTx = databaseService.loadTransactions();
         if (!loadedTx.isEmpty()) {
@@ -113,6 +115,9 @@ public class NexusApplication extends JFrame {
         if (!loadedBookings.isEmpty()) {
             mediaService.setBookings(loadedBookings);
         }
+
+        // V26: Recalculate authentic persisted metrics
+        analyticsService.recalculateMetrics(taskService.getTasks(), financeService.getTransactions(), goalService.getGoals());
         
         // Create Production Tabs (Clean, consumer-friendly, high UX, scrollable tabs)
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -128,10 +133,10 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("🎯 Strategic Goals", new GoalPanel(goalService));
         tabbedPane.addTab("📊 Executive Analytics", new AnalyticsPanel(analyticsService));
         
-        // 8-18: Review 3 Enterprise Architecture & Systems
+        // 8-19: Review 3 Enterprise Architecture & V26 Integrations
+        tabbedPane.addTab("🤖 AI Copilot", new nexus.copilot.AiCopilotPanel());
         tabbedPane.addTab("🛡️ Exception Center", new nexus.common.exceptions.ExceptionLabPanel());
         tabbedPane.addTab("☁️ Cloud Mesh", new nexus.cloud.CloudMeshPanel());
-        tabbedPane.addTab("🤖 AI Copilot", new nexus.copilot.AiCopilotPanel());
         tabbedPane.addTab("📱 Mobile Pass", new nexus.mobile.MobilePassPanel());
         tabbedPane.addTab("⚡ Resilience & LRU", new nexus.resilience.ResiliencePanel());
         tabbedPane.addTab("📜 Rule Engine", new nexus.rules.RulePanel(ruleEngineService));
@@ -140,6 +145,7 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("🌐 Web3 & zk-SNARK", new nexus.web3.Web3ProtocolPanel());
         tabbedPane.addTab("🧠 Neural Topology", new nexus.dashboard.NeuralVisualizerPanel());
         tabbedPane.addTab("🎮 Gamified Ops", new nexus.startup.StartupDashboardPanel());
+        tabbedPane.addTab("🔗 External Integrations", new nexus.integrations.IntegrationsPanel(ntfyService, metabaseService));
         
         // Setup CardLayout with Login
         CardLayout cardLayout = new CardLayout();
