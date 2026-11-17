@@ -97,7 +97,7 @@ public class CaptureV26_1_2Screenshots {
             System.out.println("Captured Tab " + (tabIdx + 1) + "/" + tabCount + ": " + fileName + " (" + rawTitle + ")");
 
             // Copy key verification tabs to artifact directory
-            if (artifactDir.exists() && (tabIdx + 1 == 3 || tabIdx + 1 == 4 || tabIdx + 1 == 5 || tabIdx + 1 == 6 || tabIdx + 1 == 17 || tabIdx + 1 == 19)) {
+            if (artifactDir.exists() && (tabIdx + 1 == 3 || tabIdx + 1 == 4 || tabIdx + 1 == 5 || tabIdx + 1 == 6 || tabIdx + 1 == 15)) {
                 try {
                     Files.copy(dest.toPath(), new File(artifactDir, fileName).toPath(), StandardCopyOption.REPLACE_EXISTING);
                 } catch (Exception ignored) {}

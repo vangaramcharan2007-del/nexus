@@ -137,8 +137,7 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("🎯 Strategic Goals", new GoalPanel(goalService));
         tabbedPane.addTab("📊 Executive Analytics", new AnalyticsPanel(analyticsService));
         
-        // 8-19: Review 3 Enterprise Architecture & V26 Integrations
-        tabbedPane.addTab("🤖 AI Copilot", new nexus.copilot.AiCopilotPanel());
+        // 8-15: Review 3 Enterprise Architecture & Integrations
         tabbedPane.addTab("🛡️ Exception Center", new nexus.common.exceptions.ExceptionLabPanel());
         tabbedPane.addTab("☁️ Cloud Mesh", new nexus.cloud.CloudMeshPanel());
         tabbedPane.addTab("📱 Mobile Pass", new nexus.mobile.MobilePassPanel());
@@ -146,9 +145,6 @@ public class NexusApplication extends JFrame {
         tabbedPane.addTab("📜 Rule Engine", new nexus.rules.RulePanel(ruleEngineService));
         tabbedPane.addTab("🏛️ Multi-Tenant Campus", new nexus.tenant.TenantPanel());
         tabbedPane.addTab("🔒 Vault & Audit Chain", new nexus.vault.VaultAuditPanel());
-        tabbedPane.addTab("🌐 Web3 & zk-SNARK", new nexus.web3.Web3ProtocolPanel());
-        tabbedPane.addTab("🧠 Neural Topology", new nexus.dashboard.NeuralVisualizerPanel());
-        tabbedPane.addTab("🎮 Gamified Ops", new nexus.startup.StartupDashboardPanel());
         tabbedPane.addTab("🔗 External Integrations", new nexus.integrations.IntegrationsPanel(ntfyService, metabaseService));
         
         // Setup CardLayout with Login

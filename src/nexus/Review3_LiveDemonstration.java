@@ -109,7 +109,7 @@ public class Review3_LiveDemonstration {
     }
 
     private static void demoStep1_Architecture() throws Exception {
-        printSectionHeader(1, "19 Enterprise Modules & Architectural Registry", "Software App Dev (15M)");
+        printSectionHeader(1, "15 Core Campus Enterprise Modules & Architectural Registry", "Software App Dev (15M)");
         String[] modules = {
             "nexus.auth (Role-Based Access Control & Multi-Tenant Security)",
             "nexus.common (Atomic EventBus, CircuitBreaker, NexusEvent)",
@@ -120,23 +120,20 @@ public class Review3_LiveDemonstration {
             "nexus.tasks (SQLite Task CRUD, Priority Queue, Seeding Guard)",
             "nexus.goals (Strategic Goal Engine, Milestone Progress Tracking)",
             "nexus.analytics (Authentic Persisted Analytics & Metrics)",
-            "nexus.copilot (AI Copilot Contextual Assistant Interface)",
             "nexus.resilience (LRU Cache, CircuitBreaker, Fault Isolation)",
             "nexus.rules (Native Zero-Dependency Event Automation Engine)",
             "nexus.tenant (Multi-Tenant Campus RBAC & Domain Authorization)",
             "nexus.vault (Immutable Cryptographic SHA-256 Audit Chain)",
-            "nexus.web3 (Web3 Protocol & Decentralized Verification Layer)",
             "nexus.cloud (Cloud Mesh & Distributed Node Simulation)",
             "nexus.mobile (Mobile Digital Campus Pass & QR Verification)",
-            "nexus.realtime (Windows Media Hook & System Event Sync)",
             "nexus.integrations (Local-First ntfy Push & Metabase Read-Only Analytics)"
         };
 
         for (int i = 0; i < modules.length; i++) {
-            System.out.printf("  [%02d/19] " + GREEN + "%-20s" + RESET + " %s\n", (i + 1), modules[i].split(" ")[0], modules[i].substring(modules[i].indexOf(" ")));
+            System.out.printf("  [%02d/%02d] " + GREEN + "%-20s" + RESET + " %s\n", (i + 1), modules.length, modules[i].split(" ")[0], modules[i].substring(modules[i].indexOf(" ")));
             Thread.sleep(15);
         }
-        System.out.println(GREEN + BOLD + "✔ All 19 enterprise subsystem modules successfully verified and registered." + RESET);
+        System.out.println(GREEN + BOLD + "✔ All " + modules.length + " core campus subsystem modules successfully verified and registered." + RESET);
     }
 
     private static void demoStep2_DatabaseEngine() throws Exception {

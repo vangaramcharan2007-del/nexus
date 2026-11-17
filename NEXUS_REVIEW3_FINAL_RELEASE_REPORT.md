@@ -29,8 +29,8 @@ flowchart LR
 
 | Component | Marks Allocated | NEXUS Architectural Implementation | Verification Proof |
 | :--- | :---: | :--- | :--- |
-| **Software Application Development** | **15 Marks** | • 19 Enterprise Packages with Java Swing GUI and SQLite WAL persistence.<br/>• Atomic EventBus (`CopyOnWriteArrayList.addIfAbsent`) with fault isolation.<br/>• Zero-Deadlock asynchronous DB queue drain (<35 ms for 50 writes).<br/>• `ReentrantReadWriteLock` for 2.5M+ concurrent reads during shutdown without `SQLException`.<br/>• Coordinated atomic checkout (`tryPurchase`) eliminating race conditions.<br/>• Merkle Tree cryptographic SHA-256 audit ledger.<br/>• Native Rule Engine for zero-dependency event-driven automation.<br/>• Local-first offline autonomy (ntfy push alerts & Metabase read-only analytics). | 17/17 Master Test Suite Passed (1,668 ms)<br/>Live Demo Runner executed (9/9 modules verified)<br/>`nexus.db` SHA-256 byte-identical (`e408bb...`) |
-| **Presentation** | **5 Marks** | • Interactive terminal live demo runner (`Run_Review3_Demo.bat`).<br/>• Live GUI with FlatDarkLaf dark theme across 19 tabs.<br/>• Structured 7-minute examiner presentation script with clear talking points.<br/>• UML diagrams, EventBus choreography, and ACID transaction flowcharts. | High-res UI captures of all 19 tabs.<br/>Visual ASCII dashboards with live progress bars. |
+| **Software Application Development** | **15 Marks** | • 15 Core Campus Subsystems with Java Swing GUI and SQLite WAL persistence.<br/>• Atomic EventBus (`CopyOnWriteArrayList.addIfAbsent`) with fault isolation.<br/>• Zero-Deadlock asynchronous DB queue drain (<35 ms for 50 writes).<br/>• `ReentrantReadWriteLock` for 2.5M+ concurrent reads during shutdown without `SQLException`.<br/>• Coordinated atomic checkout (`tryPurchase`) eliminating race conditions.<br/>• Merkle Tree cryptographic SHA-256 audit ledger.<br/>• Native Rule Engine for zero-dependency event-driven automation.<br/>• Local-first offline autonomy (ntfy push alerts & Metabase read-only analytics). | 17/17 Master Test Suite Passed (1,668 ms)<br/>Live Demo Runner executed (9/9 modules verified)<br/>`nexus.db` SHA-256 byte-identical (`e408bb...`) |
+| **Presentation** | **5 Marks** | • Interactive terminal live demo runner (`Run_Review3_Demo.bat`).<br/>• Live GUI with FlatDarkLaf dark theme across 15 production tabs.<br/>• Structured 7-minute examiner presentation script with clear talking points.<br/>• UML diagrams, EventBus choreography, and ACID transaction flowcharts. | High-res UI captures of all 15 tabs.<br/>Visual ASCII dashboards with live progress bars. |
 | **Total Review 3 Score** | **20 Marks** | **Comprehensive, production-grade academic submission** | **100% Pass Rate** |
 
 ---
@@ -132,9 +132,7 @@ Live execution screenshots of the NEXUS V26.1.2 application running FlatDarkLaf 
 <!-- slide -->
 ![Strategic Goals & Milestones](file:///C:/Users/vanga/.gemini/antigravity/brain/5f3536a0-db67-45f8-b6ac-bcc96c90cbbf/06_v26_1_2__Strategic_Goals.png)
 <!-- slide -->
-![Neural Topology Architecture Visualizer](file:///C:/Users/vanga/.gemini/antigravity/brain/5f3536a0-db67-45f8-b6ac-bcc96c90cbbf/17_v26_1_2__Neural_Topology.png)
-<!-- slide -->
-![External Integrations & Local-First Mode](file:///C:/Users/vanga/.gemini/antigravity/brain/5f3536a0-db67-45f8-b6ac-bcc96c90cbbf/19_v26_1_2__External_Integrations.png)
+![External Integrations & Local-First Mode](file:///C:/Users/vanga/.gemini/antigravity/brain/5f3536a0-db67-45f8-b6ac-bcc96c90cbbf/15_v26_1_2__External_Integrations.png)
 ````
 
 ---
@@ -170,7 +168,7 @@ Executed via `V26_1_2_Verify.bat` with a fresh build directory wipe:
 To score **5/5 in Presentation**, follow this exact chronological demonstration walkthrough:
 
 ### Minute 1: System Introduction & Architecture (Examiner Hook)
-> *"Respected Examiners, welcome to the demonstration of NEXUS Enterprise Platform V26.1.2. NEXUS is a modular, event-driven, high-concurrency desktop platform built with pure Java 21, Swing, and SQLite WAL persistence. The entire system is structured into 19 decoupled packages operating over a centralized, lock-free EventBus with zero external runtime dependencies."*
+> *"Respected Examiners, welcome to the demonstration of NEXUS Enterprise Platform V26.1.2. NEXUS is a modular, event-driven, high-concurrency desktop platform built with pure Java 21, Swing, and SQLite WAL persistence. The entire system is structured into 15 decoupled packages operating over a centralized, lock-free EventBus with zero external runtime dependencies."*
 
 ### Minute 2: Database Persistence & Deadlock-Free Queue Drain
 > *"In high-concurrency applications, background database writes often cause application freezes during shutdown. In V26.1.2, we engineered a dedicated background writer queue with lock-decoupling. Watch our live demonstration: we submit 50 asynchronous write transactions and trigger immediate shutdown. Rather than hitting a 5-second timeout, all 50 records drain cleanly to disk in just 15 milliseconds, verified by our subsequent restart recovery."*
