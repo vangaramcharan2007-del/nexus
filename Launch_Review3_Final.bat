@@ -71,7 +71,7 @@ echo [2/2] Launching NEXUS V26.1.2 GUI (FlatDarkLaf Dark Mode)...
 echo ===============================================================================
 start "NEXUS Platform" javaw -XX:+UseG1GC -Xms256m -Xmx1024m -cp "bin;lib/*" -Dfile.encoding=UTF-8 nexus.Main
 echo [SUCCESS] NEXUS V26.1.2 Application launched in background.
-timeout /t 3 >nul
+ping -n 3 127.0.0.1 >nul
 goto do_exit
 
 :: -----------------------------------------------------------------------------
@@ -125,7 +125,7 @@ if exist "NEXUS_REVIEW3_FINAL_RELEASE_REPORT.md" (
 ) else (
     echo [WARNING] Report file not found locally.
 )
-timeout /t 2 >nul
+ping -n 3 127.0.0.1 >nul
 goto menu
 
 :: -----------------------------------------------------------------------------

@@ -59,4 +59,4 @@ echo ===========================================================================
 echo   [SUCCESS] All Review 3 Architecture Files Loaded in VS Code Tabs!
 echo   NEXUS V26.1.2 Enterprise Platform is Active.
 echo ===============================================================================
-timeout /t 3 >nul
+ping -n 3 127.0.0.1 >nul
