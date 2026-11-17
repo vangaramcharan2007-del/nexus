@@ -18,10 +18,10 @@ public class GoalService implements NexusListener {
     }
 
     private void seedDefaults() {
-        Goal g1 = new Goal("A+ Grade in AOOP Review 2", "Academic", "Nov 2, 2026");
-        g1.addMilestone(new Milestone("Implement Real-Time TVMaze & CoinGecko APIs"));
-        g1.addMilestone(new Milestone("Build Modern UI with FlatLaf Charts"));
-        g1.addMilestone(new Milestone("Verify Full SQLite Database Persistence"));
+        Goal g1 = new Goal("A+ Grade in Software Application Development (Review 3)", "Academic", "Nov 20, 2026");
+        g1.addMilestone(new Milestone("Implement Thread-Safe Database Write Queue with WAL Mode"));
+        g1.addMilestone(new Milestone("Build Coordinated Atomic Financial Checkout & Merkle Ledger"));
+        g1.addMilestone(new Milestone("Verify 17-Factor Release Suite & 15 Clean Campus Modules"));
         goals.add(g1);
 
         Goal g2 = new Goal("Master Full-Stack Java Desktop Architecture", "Professional", "December 2026");

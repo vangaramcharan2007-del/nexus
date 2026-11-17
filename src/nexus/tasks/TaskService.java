@@ -36,9 +36,9 @@ public class TaskService implements NexusListener {
      */
     public synchronized void seedDefaultsIfEmpty() {
         if (tasks.isEmpty()) {
-            addTask("Prepare Review 2 Slides & Live Demo", TaskPriority.HIGH, "Academic", "Tomorrow");
-            addTask("Verify Real-Time API Connections", TaskPriority.HIGH, "Project", "Today");
-            addTask("Setup Environment & Classpath", TaskPriority.MEDIUM, "Coding", "Completed");
+            addTask("Prepare Review 3 Software Demo & Viva", TaskPriority.HIGH, "Academic", "Tomorrow");
+            addTask("Verify SQLite WAL Concurrency & ACID Guards", TaskPriority.HIGH, "Project", "Today");
+            addTask("Audit EventBus & Merkle Tree Ledger", TaskPriority.MEDIUM, "Security", "Completed");
         }
     }
     
