@@ -3,7 +3,15 @@ setlocal enabledelayedexpansion
 
 title NEXUS Enterprise Platform - V26.1.2 Review 3 Master Edition
 color 0B
-cd /d "%~dp0"
+
+:: Resolve Project Directory (supports running from Desktop or root)
+set "NEXUS_DIR=%~dp0"
+if not exist "%NEXUS_DIR%lib\flatlaf.jar" (
+    set "NEXUS_DIR=C:\Users\vanga\Documents\nexus-temp\"
+)
+cd /d "%NEXUS_DIR%"
+
+set "CP=bin;lib\flatlaf.jar;lib\sqlite-jdbc.jar;lib\slf4j-api.jar;lib\slf4j-nop.jar;lib\jsoup.jar"
 
 :: Check CLI Argument
 if /i "%~1"=="gui" goto do_gui
@@ -31,7 +39,7 @@ echo   [7] Exit
 echo.
 echo ===============================================================================
 
-choice /c 1234567 /n /t 15 /d 1 /m "Select an option [1-7] (Default: [1] Auto-launches GUI in 15s): "
+choice /c 1234567 /n /t 10 /d 1 /m "Select an option [1-7] (Default: [1] Auto-launches GUI in 10s): "
 set CHOICE_VAL=%ERRORLEVEL%
 
 if "%CHOICE_VAL%"=="1" goto do_gui
@@ -55,7 +63,7 @@ if not exist "bin" mkdir "bin"
 if not exist bin\nexus\NexusApplication.class (
     echo Compiling all NEXUS source files...
     dir /s /b src\*.java > sources.txt
-    javac -cp "lib/*" -d bin @sources.txt
+    javac -cp "%CP%" -d bin @sources.txt
     set COMPILE_STATUS=%ERRORLEVEL%
     if exist sources.txt del sources.txt
     if !COMPILE_STATUS! NEQ 0 (
@@ -69,9 +77,12 @@ echo.
 echo ===============================================================================
 echo [2/2] Launching NEXUS V26.1.2 GUI (FlatDarkLaf Dark Mode)...
 echo ===============================================================================
-start "NEXUS Platform" javaw -XX:+UseG1GC -Xms256m -Xmx1024m -cp "bin;lib/*" -Dfile.encoding=UTF-8 nexus.Main
-echo [SUCCESS] NEXUS V26.1.2 Application launched in background.
-ping -n 3 127.0.0.1 >nul
+java -XX:+UseG1GC -Xms256m -Xmx1024m -cp "%CP%" -Dfile.encoding=UTF-8 nexus.Main
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo Application exited with code %ERRORLEVEL%.
+    pause
+)
 goto do_exit
 
 :: -----------------------------------------------------------------------------
@@ -106,7 +117,7 @@ cls
 echo ===============================================================================
 echo   Capturing High-Definition Screenshots Across All 19 Tabs...
 echo ===============================================================================
-java -cp "bin;lib/*" -Dfile.encoding=UTF-8 nexus.CaptureV26_1_2Screenshots
+java -cp "%CP%" -Dfile.encoding=UTF-8 nexus.CaptureV26_1_2Screenshots
 echo.
 echo Screenshots saved to C:\Users\vanga\Downloads\nexus_v26_1_2_screenshots
 pause

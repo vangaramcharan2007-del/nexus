@@ -1,16 +1,5 @@
 @echo off
-echo ===================================
-echo   Building NEXUS Application...
-echo ===================================
-
-if not exist bin mkdir bin
-dir /s /B src\*.java > sources.txt
-javac -cp "lib/flatlaf.jar;lib/sqlite-jdbc.jar;lib/slf4j-api.jar;lib/slf4j-nop.jar" -d bin @sources.txt
-del sources.txt
-
-echo.
-echo ===================================
-echo   Starting NEXUS Application...
-echo ===================================
-
-java -cp "bin;lib/flatlaf.jar;lib/sqlite-jdbc.jar;lib/slf4j-api.jar;lib/slf4j-nop.jar" nexus.Main
+setlocal enabledelayedexpansion
+title NEXUS Enterprise Platform - V26.1.2 Review 3 Edition
+cd /d "%~dp0"
+call Launch_Review3_Final.bat %*
