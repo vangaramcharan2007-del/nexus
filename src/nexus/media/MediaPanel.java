@@ -822,13 +822,13 @@ public class MediaPanel extends JPanel implements NexusListener {
                 BorderFactory.createEmptyBorder(6, 8, 6, 8)
         ));
 
-        String qrPayload = "NEXUS-PASS|" + b.getId() + "|" + b.getMovieTitle() + "|" + b.getSeatsFormatted() + "|" + b.getBookingDate();
-        java.awt.image.BufferedImage qrImg = TicketQrGenerator.generateQrImage(qrPayload, 130);
+        String ticketUrl = nexus.mobile.CampusMobileServer.getInstance().getTicketUrl(b.getId());
+        java.awt.image.BufferedImage qrImg = TicketQrGenerator.generateQrImage(ticketUrl, 140);
 
         JLabel qrLabel = new JLabel(new ImageIcon(qrImg));
         qrLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        JLabel qrMeta = new JLabel("<html><center><font color='#38bdf8'><b>VERIFIED DIGITAL PASS</b></font><br><font color='#94a3b8' size='2'>Encrypted Gate Verification</font></center></html>", SwingConstants.CENTER);
+        JLabel qrMeta = new JLabel("<html><center><font color='#38bdf8'><b>SCAN WITH PHONE</b></font><br><font color='#94a3b8' size='2'>Live Mobile Receipt</font></center></html>", SwingConstants.CENTER);
 
         qrPanel.add(qrLabel, BorderLayout.CENTER);
         qrPanel.add(qrMeta, BorderLayout.SOUTH);

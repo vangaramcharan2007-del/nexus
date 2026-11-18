@@ -45,6 +45,12 @@ public class NexusApplication extends JFrame {
         // Initialize DatabaseService early
         nexus.database.DatabaseService databaseService = nexus.database.DatabaseService.getInstance();
         
+        // Start Local Wi-Fi Companion & Mobile Ticket Server
+        nexus.mobile.CampusMobileServer.getInstance().start();
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            nexus.mobile.CampusMobileServer.getInstance().stop();
+        }));
+        
         // Initialize Core Services
         DashboardService dashboardService = new DashboardService();
         FinanceService financeService = new FinanceService();
