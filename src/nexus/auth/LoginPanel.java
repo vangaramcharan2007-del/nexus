@@ -128,7 +128,7 @@ public class LoginPanel extends JPanel {
         
         gbc.gridy++;
         gbc.insets = new Insets(5, 25, 20, 25);
-        JPasswordField passwordField = new JPasswordField("••••••••");
+        JPasswordField passwordField = new JPasswordField("admin");
         passwordField.setPreferredSize(new Dimension(280, 42));
         passwordField.setBackground(new Color(20, 20, 30));
         passwordField.setForeground(new Color(0, 255, 255));
@@ -143,10 +143,13 @@ public class LoginPanel extends JPanel {
                 AccountService.getInstance().switchProfile(selected);
                 if (selected.getId().equals("USER-01")) {
                     usernameField.setText("ramcharan.vanga");
+                    passwordField.setText("admin");
                 } else if (selected.getId().equals("USER-02")) {
                     usernameField.setText("faculty.evaluator");
+                    passwordField.setText("faculty");
                 } else {
                     usernameField.setText("srm.peer.guest");
+                    passwordField.setText("guest");
                 }
             }
         });
@@ -182,13 +185,22 @@ public class LoginPanel extends JPanel {
         });
         
         loginButton.addActionListener(e -> {
-            loginButton.setText("VERIFYING BIOMETRICS...");
-            loginButton.setEnabled(false);
+            String u = usernameField.getText().trim();
+            String p = new String(passwordField.getPassword()).trim();
             
-            UserProfile sel = (UserProfile) userCombo.getSelectedItem();
-            AccountService.getInstance().switchProfile(sel);
+            try {
+                AccountService.getInstance().authenticate(u, p);
+            } catch (nexus.common.exceptions.AuthenticationFailedException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Authentication Failed: " + ex.getMessage() + "\n\n(Hint: default passwords are 'admin', 'faculty', 'guest', or 'nexus2026')",
+                        "Security Authentication Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-            Timer timer = new Timer(700, evt -> {
+            loginButton.setText("VERIFYING CREDENTIALS...");
+            loginButton.setEnabled(false);
+
+            Timer timer = new Timer(500, evt -> {
                 onLoginSuccess.accept(null);
                 loginButton.setText("AUTHENTICATE");
                 loginButton.setEnabled(true);

@@ -1,8 +1,27 @@
-nexus.db-shm
-nexus.db-wal
-nexus_api.key
-*.key
-*.log
-sources.txt
+# Compiled class files
+bin/
+*.class
+src/out/
 out/
+
+# SQLite databases & temp journals
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets and keys
+*.key
+nexus_api.key
+
+# Logs and system outputs
+*.log
 err.txt
+out.txt
+app_out.log
+app_err.log
+sources.txt
+sources_test.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db

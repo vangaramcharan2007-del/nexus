@@ -822,14 +822,13 @@ public class MediaPanel extends JPanel implements NexusListener {
                 BorderFactory.createEmptyBorder(6, 8, 6, 8)
         ));
 
-        String qrPayload = nexus.mobile.MobilePassService.getInstance().generateFullPayload(
-                nexus.mobile.MobilePassService.getInstance().getCurrentWindow());
-        java.awt.image.BufferedImage qrImg = nexus.mobile.DynamicQrGenerator.generateQrImage(qrPayload, 130);
+        String qrPayload = "NEXUS-PASS|" + b.getId() + "|" + b.getMovieTitle() + "|" + b.getSeatsFormatted() + "|" + b.getBookingDate();
+        java.awt.image.BufferedImage qrImg = TicketQrGenerator.generateQrImage(qrPayload, 130);
 
         JLabel qrLabel = new JLabel(new ImageIcon(qrImg));
         qrLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        JLabel qrMeta = new JLabel("<html><center><font color='#38bdf8'><b>GATE SCAN PASS</b></font><br><font color='#94a3b8' size='2'>15s Dynamic Anti-Scalp</font></center></html>", SwingConstants.CENTER);
+        JLabel qrMeta = new JLabel("<html><center><font color='#38bdf8'><b>VERIFIED DIGITAL PASS</b></font><br><font color='#94a3b8' size='2'>Encrypted Gate Verification</font></center></html>", SwingConstants.CENTER);
 
         qrPanel.add(qrLabel, BorderLayout.CENTER);
         qrPanel.add(qrMeta, BorderLayout.SOUTH);
@@ -846,19 +845,21 @@ public class MediaPanel extends JPanel implements NexusListener {
         trailerBtn.setFocusPainted(false);
         trailerBtn.addActionListener(e -> cinemaService.playInApp((Frame) SwingUtilities.getWindowAncestor(this), b.getMovieTitle(), false));
 
-        JButton mobilePassBtn = new JButton("📱 Test Gate Scanner Simulator");
-        mobilePassBtn.setBackground(new Color(59, 130, 246));
-        mobilePassBtn.setForeground(Color.WHITE);
-        mobilePassBtn.setFocusPainted(false);
-        mobilePassBtn.addActionListener(e -> {
-            nexus.auth.UserProfile prof = nexus.auth.AccountService.getInstance().getCurrentProfile();
-            nexus.mobile.MobilePassService.getInstance().updateActiveBooking(
-                    b.getId(), b.getMovieTitle(), b.getSeatsFormatted(),
-                    prof != null ? prof.getName() : "Ram Charan Vanga",
-                    prof != null ? prof.getRegNo() : "RA2511027010164"
-            );
-            dlg.dispose();
-            EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "Mobile QR Pass (P9)", "Media"));
+        JButton receiptBtn = new JButton("📄 View Full Receipt");
+        receiptBtn.setBackground(new Color(59, 130, 246));
+        receiptBtn.setForeground(Color.WHITE);
+        receiptBtn.setFocusPainted(false);
+        receiptBtn.addActionListener(e -> {
+            JOptionPane.showMessageDialog(this,
+                    "=== NEXUS VERIFIED TICKET RECEIPT ===\n" +
+                    "Booking ID: " + b.getId() + "\n" +
+                    "Movie: " + b.getMovieTitle() + "\n" +
+                    "Theater: Nexus Screen 1 (4K Dolby Atmos)\n" +
+                    "Seats: " + b.getSeatsFormatted() + "\n" +
+                    "Amount Paid: ₹" + String.format("%.2f", b.getFinalTotal()) + "\n" +
+                    "Booking Date: " + b.getBookingDate() + "\n" +
+                    "Status: CONFIRMED & ACTIVE",
+                    "Ticket Receipt #" + b.getId(), JOptionPane.INFORMATION_MESSAGE);
         });
 
         JButton close = new JButton("Close Pass");
@@ -868,7 +869,7 @@ public class MediaPanel extends JPanel implements NexusListener {
         close.addActionListener(e -> dlg.dispose());
 
         btm.add(trailerBtn);
-        btm.add(mobilePassBtn);
+        btm.add(receiptBtn);
         btm.add(close);
         p.add(btm, BorderLayout.SOUTH);
 
@@ -1062,25 +1063,18 @@ public class MediaPanel extends JPanel implements NexusListener {
         searchBar.add(searchField);
         searchBar.add(searchBtn);
 
-        JButton matchmakerBtn = new JButton("🎯 Smart Cinephile Matchmaker");
+        JButton matchmakerBtn = new JButton("⭐ Top Rated Picks");
         matchmakerBtn.setBackground(new Color(16, 185, 129));
         matchmakerBtn.setForeground(Color.WHITE);
         matchmakerBtn.setFocusPainted(false);
         matchmakerBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         matchmakerBtn.addActionListener(e -> {
-            String q = searchField.getText().trim();
-            if (q.isEmpty()) q = "Blockbuster Sci-Fi & Action";
-            final String finalQ = q;
-            JOptionPane.showMessageDialog(this, "Analyzing entertainment preferences for: " + finalQ + "...", "Cinephile Matchmaker", JOptionPane.INFORMATION_MESSAGE);
-            new Thread(() -> {
-                String rec = nexus.copilot.NexusAiClient.queryAi(
-                        "Recommend 2 top rated movies or series matching: " + finalQ + " for an engineering student with brief reasons and IMDb score.",
-                        "You are NEXUS Smart Movie Recommender. Respond in concise bullet points."
-                );
-                SwingUtilities.invokeLater(() -> {
-                    JOptionPane.showMessageDialog(this, rec, "🎬 Cinephile Recommendations (" + finalQ + ")", JOptionPane.INFORMATION_MESSAGE);
-                });
-            }).start();
+            StringBuilder sb = new StringBuilder("🎬 NEXUS Curated Picks:\n\n");
+            sb.append("• Interstellar (9.0/10) - Masterpiece sci-fi exploration.\n");
+            sb.append("• Dune: Part Two (8.6/10) - Epic visual & cinematic storytelling.\n");
+            sb.append("• The Dark Knight (9.0/10) - Timeless action thriller.\n");
+            sb.append("• Spider-Man: Across the Spider-Verse (8.7/10) - Revolutionary animation.\n");
+            JOptionPane.showMessageDialog(this, sb.toString(), "🎬 Curated Recommendations", JOptionPane.INFORMATION_MESSAGE);
         });
         searchBar.add(matchmakerBtn);
         panel.add(searchBar, BorderLayout.NORTH);

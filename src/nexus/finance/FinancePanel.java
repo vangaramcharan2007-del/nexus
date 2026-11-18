@@ -139,15 +139,15 @@ public class FinancePanel extends JPanel implements NexusListener {
         JPanel rightActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         rightActions.setOpaque(false);
 
-        JButton copilotBtn = new JButton("📈 Quantitative Engine (P10)");
-        copilotBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
-        copilotBtn.setBackground(new Color(16, 185, 129));
-        copilotBtn.setForeground(Color.WHITE);
-        copilotBtn.setFocusPainted(false);
-        copilotBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        copilotBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "Quantitative", "Finance")));
+        JButton xpNavBtn = new JButton("📊 Financial Insights (XP)");
+        xpNavBtn.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        xpNavBtn.setBackground(new Color(16, 185, 129));
+        xpNavBtn.setForeground(Color.WHITE);
+        xpNavBtn.setFocusPainted(false);
+        xpNavBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        xpNavBtn.addActionListener(e -> EventBus.getInstance().publish(new NexusEvent("NAVIGATION_REQUEST", "Analytics", "Finance")));
 
-        rightActions.add(copilotBtn);
+        rightActions.add(xpNavBtn);
         rightActions.add(refreshBtn);
 
         bar.add(title, BorderLayout.WEST);

@@ -11,13 +11,13 @@ public class AccountService implements IAuthenticationProvider {
     private UserProfile currentProfile;
 
     private AccountService() {
-        // Default profiles
+        // Default profiles (personal details scrubbed for production release)
         UserProfile ram = new UserProfile(
                 "USER-01",
                 "Ram Charan Vanga",
                 "Lead Developer (Student Admin)",
-                "RA2511027010164 - SRM CSE (Big Data)",
-                "Room 402, Kaveri Hostel, SRM University Kattankulathur, Chennai - 603203",
+                "NEXUS-ADMIN-2026 - CSE",
+                "Campus Technology Park, Suite 402, Academic City",
                 "NEXUS Capital Wallet",
                 "👨‍💻",
                 "Apex Master (Level 8)"
@@ -28,7 +28,7 @@ public class AccountService implements IAuthenticationProvider {
                 "Dr. Academic Examiner",
                 "Faculty Evaluator & Project Reviewer",
                 "FAC-AOOP-2026 - Dept of Computational Intelligence",
-                "Tech Park #508, Faculty Block, SRMIST Main Campus, Chennai",
+                "Tech Park #508, Faculty Block, Main Campus",
                 "SRM Faculty Concession Card",
                 "👨‍🏫",
                 "Executive Reviewer"
@@ -36,11 +36,11 @@ public class AccountService implements IAuthenticationProvider {
 
         UserProfile peer = new UserProfile(
                 "USER-03",
-                "SRM Undergrad Peer",
+                "Campus Undergrad Peer",
                 "Collaborator & Student Tester",
-                "RA2511027010999 - SRM Tech",
-                "Adhiyaman Hostel Block-D, SRM Kattankulathur",
-                "UPI / Google Pay",
+                "NEXUS-GUEST-2026 - Engineering",
+                "Hostel Quad B, Student Housing",
+                "UPI / Campus Pay",
                 "🎓",
                 "Novice Explorer (Level 2)"
         );
@@ -77,14 +77,40 @@ public class AccountService implements IAuthenticationProvider {
         if (credential == null || credential.trim().isEmpty()) {
             throw new nexus.common.exceptions.AuthenticationFailedException(username, "Empty security credentials provided.");
         }
+        
+        // Find matching profile by id, name, or username alias
+        UserProfile matched = null;
         for (UserProfile p : profiles) {
-            if (p.getName().equalsIgnoreCase(username) || p.getId().equalsIgnoreCase(username)) {
-                this.currentProfile = p;
-                EventBus.getInstance().publish(new NexusEvent("USER_SWITCHED", p, "Auth"));
-                return p;
+            if (p.getName().equalsIgnoreCase(username) || 
+                p.getId().equalsIgnoreCase(username) ||
+                (username.toLowerCase().contains("ram") && p.getId().equals("USER-01")) ||
+                (username.toLowerCase().contains("faculty") && p.getId().equals("USER-02")) ||
+                (username.toLowerCase().contains("peer") && p.getId().equals("USER-03")) ||
+                (username.toLowerCase().contains("guest") && p.getId().equals("USER-03"))) {
+                matched = p;
+                break;
             }
         }
-        throw new nexus.common.exceptions.AuthenticationFailedException(username, "Identity not recognized in zero-trust ledger.");
+        
+        if (matched == null) {
+            throw new nexus.common.exceptions.AuthenticationFailedException(username, "Identity not recognized in user directory.");
+        }
+
+        // Verify password credential (accepts profile passwords or global master key)
+        String cred = credential.trim();
+        boolean valid = cred.equals("admin") || cred.equals("admin123") || cred.equals("nexus2026") ||
+                        cred.equals("faculty") || cred.equals("guest") ||
+                        (matched.getId().equals("USER-01") && cred.equals("admin")) ||
+                        (matched.getId().equals("USER-02") && cred.equals("faculty")) ||
+                        (matched.getId().equals("USER-03") && cred.equals("guest"));
+
+        if (!valid) {
+            throw new nexus.common.exceptions.AuthenticationFailedException(username, "Invalid password credentials. Access denied.");
+        }
+
+        this.currentProfile = matched;
+        EventBus.getInstance().publish(new NexusEvent("USER_SWITCHED", matched, "Auth"));
+        return matched;
     }
 
     @Override
