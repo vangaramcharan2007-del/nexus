@@ -86,8 +86,7 @@ public class GoalService implements NexusListener {
     
     @Override
     public void onEvent(NexusEvent event) {
-        if ("ITEM_PURCHASED".equals(event.getType())) {
-            nexus.market.Product product = (nexus.market.Product) event.getPayload();
+        if ("ITEM_PURCHASED".equals(event.getType()) && event.getPayload() instanceof nexus.market.Product product) {
             String pName = product.getName().toLowerCase();
             for (Goal g : goals) {
                 for (int i = 0; i < g.getMilestones().size(); i++) {
@@ -97,8 +96,7 @@ public class GoalService implements NexusListener {
                     }
                 }
             }
-        } else if ("TASK_COMPLETED".equals(event.getType())) {
-            nexus.tasks.Task task = (nexus.tasks.Task) event.getPayload();
+        } else if ("TASK_COMPLETED".equals(event.getType()) && event.getPayload() instanceof nexus.tasks.Task task) {
             String taskTitle = task.getTitle().toLowerCase();
             for (Goal g : goals) {
                 for (int i = 0; i < g.getMilestones().size(); i++) {

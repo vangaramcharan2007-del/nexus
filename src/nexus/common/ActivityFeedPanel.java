@@ -43,35 +43,45 @@ public class ActivityFeedPanel extends JPanel implements NexusListener {
 
     @Override
     public void onEvent(NexusEvent event) {
+        if (event == null) return;
         String type = event.getType();
+        Object payload = event.getPayload();
         
         if ("TASK_COMPLETED".equals(type)) {
-            nexus.tasks.Task t = (nexus.tasks.Task) event.getPayload();
-            logEvent("Task Completed: " + t.getTitle());
+            if (payload instanceof nexus.tasks.Task t) {
+                logEvent("Task Completed: " + t.getTitle());
+            } else {
+                logEvent("Task Completed");
+            }
         } else if ("GOAL_COMPLETED".equals(type)) {
-            nexus.goals.Goal g = (nexus.goals.Goal) event.getPayload();
-            logEvent("Goal Achieved! " + g.getTitle() + " (Rewarded +$150)");
+            if (payload instanceof nexus.goals.Goal g) {
+                logEvent("Goal Achieved! " + g.getTitle() + " (Rewarded +$150)");
+            }
         } else if ("PRODUCT_PURCHASED".equals(type)) {
-            logEvent("Market Purchase: $" + event.getPayload());
+            logEvent("Market Purchase: $" + payload);
         } else if ("MEDIA_COMPLETED".equals(type)) {
-            nexus.media.MediaItem m = (nexus.media.MediaItem) event.getPayload();
-            logEvent("Media Finished: " + m.getTitle());
+            if (payload instanceof nexus.media.MediaItem m) {
+                logEvent("Media Finished: " + m.getTitle());
+            }
         } else if ("MEDIA_ADDED".equals(type)) {
-            nexus.media.MediaItem m = (nexus.media.MediaItem) event.getPayload();
-            logEvent("New Media Added: " + m.getTitle());
+            if (payload instanceof nexus.media.MediaItem m) {
+                logEvent("New Media Added: " + m.getTitle());
+            }
         } else if ("INSIGHT_GENERATED".equals(type)) {
-            // Insights are lists, let's just grab the last one
-            java.util.List<?> insights = (java.util.List<?>) event.getPayload();
-            if (!insights.isEmpty()) {
-                nexus.analytics.Insight insight = (nexus.analytics.Insight) insights.get(insights.size() - 1);
-                logEvent("Insight: " + insight.getMessage());
+            if (payload instanceof java.util.List<?> insights && !insights.isEmpty()) {
+                Object last = insights.get(insights.size() - 1);
+                if (last instanceof nexus.analytics.Insight insight) {
+                    logEvent("Insight: " + insight.getMessage());
+                }
             }
         } else if ("USER_SWITCHED".equals(type)) {
-            nexus.auth.UserProfile p = (nexus.auth.UserProfile) event.getPayload();
-            logEvent("Active Profile: " + p.getAvatar() + " " + p.getName() + " (" + p.getRole() + ")");
+            if (payload instanceof nexus.auth.UserProfile p) {
+                logEvent("Active Profile: " + p.getAvatar() + " " + p.getName() + " (" + p.getRole() + ")");
+            }
         } else if ("TICKET_BOOKED".equals(type)) {
-            nexus.media.CinemaBooking b = (nexus.media.CinemaBooking) event.getPayload();
-            logEvent("🎟️ Ticket Booked: " + b.getMovieTitle() + " Seats: " + b.getSeatsFormatted() + " Paid via: " + b.getPaymentMethod());
+            if (payload instanceof nexus.media.CinemaBooking b) {
+                logEvent("🎟️ Ticket Booked: " + b.getMovieTitle() + " Seats: " + b.getSeatsFormatted() + " Paid via: " + b.getPaymentMethod());
+            }
         }
     }
 }

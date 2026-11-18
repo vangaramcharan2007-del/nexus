@@ -164,6 +164,11 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
 
     private void renderInsights(List<Insight> insights) {
         insightsContainer.removeAll();
+        if (insights == null || insights.isEmpty()) {
+            insightsContainer.revalidate();
+            insightsContainer.repaint();
+            return;
+        }
         for (Insight i : insights) {
             JPanel card = new JPanel(new BorderLayout(8, 0));
             card.setBackground(new Color(30, 41, 59));
@@ -219,9 +224,11 @@ public class AnalyticsPanel extends JPanel implements NexusListener {
                     efficiencyLabel.setText(String.format("%.1f%% Preserved", ratio));
                 }
             } else if ("INSIGHT_GENERATED".equals(event.getType())) {
-                @SuppressWarnings("unchecked")
-                List<Insight> updated = (List<Insight>) event.getPayload();
-                renderInsights(updated);
+                if (event.getPayload() instanceof List<?> rawList) {
+                    @SuppressWarnings("unchecked")
+                    List<Insight> updated = (List<Insight>) rawList;
+                    renderInsights(updated);
+                }
             }
         });
     }
